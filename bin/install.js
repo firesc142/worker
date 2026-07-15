@@ -45,24 +45,7 @@ function initConfig() {
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
 }
 
-function checkLocaltunnel() {
-  try {
-    require.resolve('localtunnel');
-    console.log('  localtunnel package found.');
-    return true;
-  } catch {
-    console.log('  [!] localtunnel not installed. Installing...');
-    try {
-      execSync('npm install localtunnel', { stdio: 'pipe', cwd: path.join(__dirname, '..') });
-      console.log('  localtunnel installed successfully.');
-      return true;
-    } catch (err) {
-      console.log('  [!] Failed to install localtunnel automatically.');
-      console.log('  Run manually: npm install localtunnel');
-      return false;
-    }
-  }
-}
+
 
 function setupStartupFolder() {
   try {
@@ -102,10 +85,7 @@ async function main() {
   initConfig();
   createActivityLog();
 
-  console.log('[3/4] Checking localtunnel...');
-  checkLocaltunnel();
-
-  console.log('[4/4] Setting up auto-start...');
+  console.log('[3/3] Setting up auto-start...');
   setupStartupFolder();
 
   console.log('\n========================================');

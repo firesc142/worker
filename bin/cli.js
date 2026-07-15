@@ -12,8 +12,16 @@ const PID_FILE = path.join(CONFIG_DIR, 'server.pid');
 const SERVER_SCRIPT = path.join(__dirname, '..', 'server', 'server.js');
 
 function ensureConfigDir() {
-  if (!fs.existsSync(CONFIG_DIR)) {
-    fs.mkdirSync(CONFIG_DIR, { recursive: true });
+  if (!fs.existsSync(CONFIG_FILE)) {
+    console.log('Running first-time setup...');
+    try {
+      execSync(`node "${path.join(__dirname, 'install.js')}"`, { stdio: 'inherit' });
+    } catch (e) {
+      console.log('First-time setup encountered an error, but continuing...');
+      if (!fs.existsSync(CONFIG_DIR)) {
+        fs.mkdirSync(CONFIG_DIR, { recursive: true });
+      }
+    }
   }
 }
 
