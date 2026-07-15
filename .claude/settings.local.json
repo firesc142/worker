@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(New-Item *)",
+      "WebSearch",
+      "PowerShell(npm install *)",
+      "PowerShell(Start-Sleep -Seconds 3; try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:3000/login.html\" -UseBasicParsing -TimeoutSec 5; Write-Output \"Status: $\\($r.StatusCode\\)\"; Write-Output \"Length: $\\($r.Content.Length\\) chars\" } catch { Write-Output \"Error: $\\($_.Exception.Message\\)\" })",
+      "Bash(node -e \"const p = require\\('./package.json'\\); console.log\\(p.name, p.bin\\)\")",
+      "PowerShell($csc = Get-ChildItem -Path \"$env:SystemRoot\\\\Microsoft.NET\\\\Framework\" -Filter \"csc.exe\" -Recurse | Sort-Object -Descending | Select-Object -First 1; $csc.FullName)",
+      "PowerShell(cmd /c \"cd /d $env:TEMP\\\\screenCapture & screenCapture_1.3.2.bat /list\")",
+      "Bash(node *)"
+    ]
+  }
+}
