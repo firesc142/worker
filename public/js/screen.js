@@ -158,49 +158,68 @@
   });
 
   // === EFFICIENT MODE: Receive tile diffs ===
+  const FMT_RAW_DEFLATE = 0x00;
+  const FMT_WEBP = 0x01;
+  const HEADER_SIZE = 14;
+  const TILE_HEADER_SIZE = 8;
+
+  function ensureCanvasSize(width, height, isKeyframe) {
+    if (canvas.width === width && canvas.height === height) return;
+    let savedImage = null;
+    if (canvas.width > 0 && canvas.height > 0) {
+      savedImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    }
+    canvas.width = width;
+    canvas.height = height;
+    if (savedImage && !isKeyframe) {
+      ctx.putImageData(savedImage, 0, 0);
+    }
+    screenWidth = width;
+    screenHeight = height;
+  }
+
+  function drawDeflateTile(bytes, tileX, tileY, tileSize, width, height) {
+    const rgb = pako.inflate(bytes);
+    const tileW = Math.min(tileSize, width - tileX);
+    const tileH = Math.min(tileSize, height - tileY);
+    const rgba = new Uint8ClampedArray(tileW * tileH * 4);
+    let ri = 0;
+    for (let i = 0; i < tileW * tileH; i++) {
+      rgba[i * 4] = rgb[ri];
+      rgba[i * 4 + 1] = rgb[ri + 1];
+      rgba[i * 4 + 2] = rgb[ri + 2];
+      rgba[i * 4 + 3] = 255;
+      ri += 3;
+    }
+    ctx.putImageData(new ImageData(rgba, tileW, tileH), tileX, tileY);
+  }
+
   socket.on('screen-tiles', (buffer) => {
     if (streamMode !== 'efficient') return;
     try {
-      const view = new DataView(buffer instanceof ArrayBuffer ? buffer : buffer.buffer || new Uint8Array(buffer).buffer);
-      const bytes = new Uint8Array(view.buffer);
+      const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+      const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 
       const msgType = view.getUint8(0);
-      const frameSeq = view.getUint32(1, true);
-      const width = view.getUint16(5, true);
-      const height = view.getUint16(7, true);
-      const tileSize = view.getUint8(9);
-      const tileCount = view.getUint16(10, true);
+      const format = view.getUint8(1);
+      const frameSeq = view.getUint32(2, true);
+      const width = view.getUint16(6, true);
+      const height = view.getUint16(8, true);
+      const tileSize = view.getUint16(10, true);
+      const tileCount = view.getUint16(12, true);
+      const isKeyframe = msgType === 0x02;
 
       // Detect frame gaps — request keyframe if needed
-      if (lastFrameSeq > 0 && frameSeq > lastFrameSeq + 1 && msgType !== 0x02) {
+      if (lastFrameSeq > 0 && frameSeq > lastFrameSeq + 1 && !isKeyframe) {
         socket.emit('request-keyframe');
       }
       lastFrameSeq = frameSeq;
 
-      // Resize canvas if dimensions changed (only on keyframes to avoid flicker)
-      if (msgType === 0x02 || canvas.width !== width || canvas.height !== height) {
-        if (canvas.width !== width || canvas.height !== height) {
-          // Save existing content before resize
-          let savedImage = null;
-          if (canvas.width > 0 && canvas.height > 0) {
-            savedImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          }
-          canvas.width = width;
-          canvas.height = height;
-          if (savedImage && msgType !== 0x02) {
-            ctx.putImageData(savedImage, 0, 0);
-          }
-        }
-        screenWidth = width;
-        screenHeight = height;
-      }
+      ensureCanvasSize(width, height, isKeyframe);
 
       // Parse tile headers
-      const HEADER_SIZE = 12;
-      const TILE_HEADER_SIZE = 8;
       const tiles = [];
       let offset = HEADER_SIZE;
-
       for (let i = 0; i < tileCount; i++) {
         const col = view.getUint16(offset, true);
         const row = view.getUint16(offset + 2, true);
@@ -209,30 +228,25 @@
         offset += TILE_HEADER_SIZE;
       }
 
-      // Decompress and draw each tile
-      for (const tile of tiles) {
-        const compressed = bytes.slice(offset, offset + tile.dataLength);
-        offset += tile.dataLength;
-
-        const rgb = pako.inflate(compressed);
-        const tileX = tile.col * tileSize;
-        const tileY = tile.row * tileSize;
-        const tileW = Math.min(tileSize, width - tileX);
-        const tileH = Math.min(tileSize, height - tileY);
-
-        // RGB → RGBA for ImageData
-        const rgba = new Uint8ClampedArray(tileW * tileH * 4);
-        let ri = 0;
-        for (let i = 0; i < tileW * tileH; i++) {
-          rgba[i * 4] = rgb[ri];
-          rgba[i * 4 + 1] = rgb[ri + 1];
-          rgba[i * 4 + 2] = rgb[ri + 2];
-          rgba[i * 4 + 3] = 255;
-          ri += 3;
+      if (format === FMT_WEBP) {
+        // Decode each WebP tile asynchronously, then blit at its position.
+        for (const tile of tiles) {
+          const data = bytes.slice(offset, offset + tile.dataLength);
+          offset += tile.dataLength;
+          const tileX = tile.col * tileSize;
+          const tileY = tile.row * tileSize;
+          const blob = new Blob([data], { type: 'image/webp' });
+          createImageBitmap(blob).then((bmp) => {
+            ctx.drawImage(bmp, tileX, tileY);
+            bmp.close && bmp.close();
+          }).catch(() => {});
         }
-
-        const imgData = new ImageData(rgba, tileW, tileH);
-        ctx.putImageData(imgData, tileX, tileY);
+      } else {
+        for (const tile of tiles) {
+          const data = bytes.slice(offset, offset + tile.dataLength);
+          offset += tile.dataLength;
+          drawDeflateTile(data, tile.col * tileSize, tile.row * tileSize, tileSize, width, height);
+        }
       }
     } catch (err) {
       console.error('Tile decode error:', err);

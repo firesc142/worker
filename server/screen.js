@@ -193,7 +193,7 @@ function handleConnection(socket) {
   function startStream() {
     streaming = true;
     if (streamMode === 'efficient') {
-      efficientStream.start(socket, { fps });
+      efficientStream.start(socket, { fps, quality });
     } else {
       startCapture();
     }
@@ -232,13 +232,17 @@ function handleConnection(socket) {
         startCapture();
       } else {
         efficientStream.stop();
-        efficientStream.start(socket, { fps });
+        efficientStream.start(socket, { fps, quality });
       }
     }
   });
 
   socket.on('set-quality', (newQuality) => {
     quality = Math.min(100, Math.max(1, newQuality));
+    if (streaming && streamMode === 'efficient') {
+      efficientStream.stop();
+      efficientStream.start(socket, { fps, quality });
+    }
   });
 
   socket.on('mouse-move', (data) => {
