@@ -1,41 +1,66 @@
-const koffi = require('koffi');
-const monitors = require('./monitors');
+let koffi = null;
+let gdi32 = null;
+let user32 = null;
 
-const gdi32 = koffi.load('gdi32.dll');
-const user32 = koffi.load('user32.dll');
+try {
+  koffi = require('koffi');
+  gdi32 = koffi.load('gdi32.dll');
+  user32 = koffi.load('user32.dll');
+} catch (err) {
+  console.warn('[capture-gdi] Failed to load koffi or system DLLs. GDI capturing will not be available:', err.message);
+}
 
 const SRCCOPY = 0x00CC0020;
 const BI_RGB = 0;
 const DIB_RGB_COLORS = 0;
 
-const BITMAPINFOHEADER = koffi.struct('BITMAPINFOHEADER', {
-  biSize: 'uint32',
-  biWidth: 'int32',
-  biHeight: 'int32',
-  biPlanes: 'uint16',
-  biBitCount: 'uint16',
-  biCompression: 'uint32',
-  biSizeImage: 'uint32',
-  biXPelsPerMeter: 'int32',
-  biYPelsPerMeter: 'int32',
-  biClrUsed: 'uint32',
-  biClrImportant: 'uint32',
-});
+let BITMAPINFOHEADER = null;
+let BITMAPINFO = null;
+let GetDC = null;
+let ReleaseDC = null;
+let CreateCompatibleDC = null;
+let CreateCompatibleBitmap = null;
+let SelectObject = null;
+let BitBlt = null;
+let GetDIBits = null;
+let DeleteObject = null;
+let DeleteDC = null;
 
-const BITMAPINFO = koffi.struct('BITMAPINFO', {
-  bmiHeader: BITMAPINFOHEADER,
-  bmiColors: koffi.array('uint8', 4),
-});
+if (koffi && gdi32 && user32) {
+  try {
+    BITMAPINFOHEADER = koffi.struct('BITMAPINFOHEADER', {
+      biSize: 'uint32',
+      biWidth: 'int32',
+      biHeight: 'int32',
+      biPlanes: 'uint16',
+      biBitCount: 'uint16',
+      biCompression: 'uint32',
+      biSizeImage: 'uint32',
+      biXPelsPerMeter: 'int32',
+      biYPelsPerMeter: 'int32',
+      biClrUsed: 'uint32',
+      biClrImportant: 'uint32',
+    });
 
-const GetDC = user32.func('intptr GetDC(intptr hWnd)');
-const ReleaseDC = user32.func('int ReleaseDC(intptr hWnd, intptr hDC)');
-const CreateCompatibleDC = gdi32.func('intptr CreateCompatibleDC(intptr hdc)');
-const CreateCompatibleBitmap = gdi32.func('intptr CreateCompatibleBitmap(intptr hdc, int cx, int cy)');
-const SelectObject = gdi32.func('intptr SelectObject(intptr hdc, intptr h)');
-const BitBlt = gdi32.func('bool BitBlt(intptr hdc, int x, int y, int cx, int cy, intptr hdcSrc, int x1, int y1, uint32 rop)');
-const GetDIBits = gdi32.func('int GetDIBits(intptr hdc, intptr hbm, uint32 start, uint32 cLines, _Out_ uint8 *lpvBits, _Inout_ BITMAPINFO *lpbmi, uint32 usage)');
-const DeleteObject = gdi32.func('bool DeleteObject(intptr ho)');
-const DeleteDC = gdi32.func('bool DeleteDC(intptr hdc)');
+    BITMAPINFO = koffi.struct('BITMAPINFO', {
+      bmiHeader: BITMAPINFOHEADER,
+      bmiColors: koffi.array('uint8', 4),
+    });
+
+    GetDC = user32.func('intptr GetDC(intptr hWnd)');
+    ReleaseDC = user32.func('int ReleaseDC(intptr hWnd, intptr hDC)');
+    CreateCompatibleDC = gdi32.func('intptr CreateCompatibleDC(intptr hdc)');
+    CreateCompatibleBitmap = gdi32.func('intptr CreateCompatibleBitmap(intptr hdc, int cx, int cy)');
+    SelectObject = gdi32.func('intptr SelectObject(intptr hdc, intptr h)');
+    BitBlt = gdi32.func('bool BitBlt(intptr hdc, int x, int y, int cx, int cy, intptr hdcSrc, int x1, int y1, uint32 rop)');
+    GetDIBits = gdi32.func('int GetDIBits(intptr hdc, intptr hbm, uint32 start, uint32 cLines, _Out_ uint8 *lpvBits, _Inout_ BITMAPINFO *lpbmi, uint32 usage)');
+    DeleteObject = gdi32.func('bool DeleteObject(intptr ho)');
+    DeleteDC = gdi32.func('bool DeleteDC(intptr hdc)');
+  } catch (err) {
+    console.error('[capture-gdi] Failed to declare GDI structures/functions:', err.message);
+  }
+}
+
 
 let desktopDC = null;
 let memDC = null;
@@ -49,6 +74,10 @@ let captureOffsetY = 0;
 let initialized = false;
 
 function initCapture(width, height, offsetX, offsetY) {
+  if (!GetDC || !CreateCompatibleDC || !CreateCompatibleBitmap || !SelectObject) {
+    console.warn('[capture-gdi] Cannot initialize capture: native GDI functions are not loaded.');
+    return;
+  }
   releaseCapture();
 
   captureWidth = width;
@@ -65,10 +94,15 @@ function initCapture(width, height, offsetX, offsetY) {
 }
 
 function captureFrame() {
+  if (!BitBlt || !GetDIBits) {
+    console.warn('[capture-gdi] Cannot capture frame: native GDI functions are not loaded.');
+    return null;
+  }
   if (!initialized) {
     const bounds = monitors.getMonitorBounds(monitors.getActiveMonitor());
     initCapture(bounds.width, bounds.height, bounds.x, bounds.y);
   }
+  if (!initialized) return null;
 
   BitBlt(memDC, 0, 0, captureWidth, captureHeight, desktopDC, captureOffsetX, captureOffsetY, SRCCOPY);
 
@@ -106,10 +140,10 @@ function reinitForMonitor(monitorId) {
 function releaseCapture() {
   if (!initialized) return;
   try {
-    if (oldBitmap && memDC) SelectObject(memDC, oldBitmap);
-    if (bitmap) DeleteObject(bitmap);
-    if (memDC) DeleteDC(memDC);
-    if (desktopDC) ReleaseDC(0, desktopDC);
+    if (oldBitmap && memDC && SelectObject) SelectObject(memDC, oldBitmap);
+    if (bitmap && DeleteObject) DeleteObject(bitmap);
+    if (memDC && DeleteDC) DeleteDC(memDC);
+    if (desktopDC && ReleaseDC) ReleaseDC(0, desktopDC);
   } catch (err) {
     console.error('GDI cleanup error:', err.message);
   }

@@ -94,6 +94,8 @@ function captureAndSend(socket, forceKeyframe) {
     }
 
     const frame = captureGdi.captureFrame();
+    if (!frame) return; // Native capture not available
+
     const width = captureGdi.getWidth();
     const height = captureGdi.getHeight();
 

@@ -1,10 +1,19 @@
 const screenshot = require('screenshot-desktop');
-const koffi = require('koffi');
 const monitors = require('./monitors');
 const efficientStream = require('./efficient-stream');
 
-const user32 = koffi.load('user32.dll');
-const kernel32 = koffi.load('kernel32.dll');
+let koffi = null;
+let user32 = null;
+let kernel32 = null;
+
+try {
+  koffi = require('koffi');
+  user32 = koffi.load('user32.dll');
+  kernel32 = koffi.load('kernel32.dll');
+} catch (err) {
+  console.warn('[screen] Failed to load koffi or system DLLs. Native input emulation will not be available:', err.message);
+}
+
 
 const INPUT_MOUSE = 0;
 const INPUT_KEYBOARD = 1;
@@ -21,46 +30,65 @@ const KEYEVENTF_KEYUP = 0x0002;
 const KEYEVENTF_UNICODE = 0x0004;
 const WHEEL_DELTA = 120;
 
-const SetCursorPos = user32.func('bool SetCursorPos(int x, int y)');
-const GetSystemMetrics = user32.func('int GetSystemMetrics(int nIndex)');
+let SetCursorPos = null;
+let GetSystemMetrics = null;
+let POINT = null;
+let GetCursorPos = null;
+let MOUSEINPUT = null;
+let KEYBDINPUT = null;
+let INPUT_union = null;
+let INPUT = null;
 
-const POINT = koffi.struct('POINT', { x: 'int32', y: 'int32' });
-const GetCursorPos = user32.func('bool GetCursorPos(_Out_ POINT *lpPoint)');
+if (koffi && user32) {
+  try {
+    SetCursorPos = user32.func('bool SetCursorPos(int x, int y)');
+    GetSystemMetrics = user32.func('int GetSystemMetrics(int nIndex)');
 
-const MOUSEINPUT = koffi.struct('MOUSEINPUT', {
-  dx: 'int32',
-  dy: 'int32',
-  mouseData: 'uint32',
-  dwFlags: 'uint32',
-  time: 'uint32',
-  dwExtraInfo: 'uintptr',
-});
+    POINT = koffi.struct('POINT', { x: 'int32', y: 'int32' });
+    GetCursorPos = user32.func('bool GetCursorPos(_Out_ POINT *lpPoint)');
 
-const KEYBDINPUT = koffi.struct('KEYBDINPUT', {
-  wVk: 'uint16',
-  wScan: 'uint16',
-  dwFlags: 'uint32',
-  time: 'uint32',
-  dwExtraInfo: 'uintptr',
-});
+    MOUSEINPUT = koffi.struct('MOUSEINPUT', {
+      dx: 'int32',
+      dy: 'int32',
+      mouseData: 'uint32',
+      dwFlags: 'uint32',
+      time: 'uint32',
+      dwExtraInfo: 'uintptr',
+    });
 
-const INPUT_union = koffi.union('INPUT_union', {
-  mi: MOUSEINPUT,
-  ki: KEYBDINPUT,
-});
+    KEYBDINPUT = koffi.struct('KEYBDINPUT', {
+      wVk: 'uint16',
+      wScan: 'uint16',
+      dwFlags: 'uint32',
+      time: 'uint32',
+      dwExtraInfo: 'uintptr',
+    });
 
-const INPUT = koffi.struct('INPUT', {
-  type: 'uint32',
-  _padding: koffi.array('uint8', 4),
-  u: INPUT_union,
-});
+    INPUT_union = koffi.union('INPUT_union', {
+      mi: MOUSEINPUT,
+      ki: KEYBDINPUT,
+    });
 
-let SendInput;
-try {
-  SendInput = user32.func('uint32 SendInput(uint32 cInputs, INPUT *pInputs, int cbSize)');
-} catch (e) {
-  SendInput = null;
+    INPUT = koffi.struct('INPUT', {
+      type: 'uint32',
+      _padding: koffi.array('uint8', 4),
+      u: INPUT_union,
+    });
+  } catch (err) {
+    console.error('[screen] Failed to build Windows structs and functions:', err.message);
+  }
 }
+
+
+let SendInput = null;
+if (user32) {
+  try {
+    SendInput = user32.func('uint32 SendInput(uint32 cInputs, INPUT *pInputs, int cbSize)');
+  } catch (e) {
+    SendInput = null;
+  }
+}
+
 
 const VK_MAP = {
   'Enter': 0x0D, 'Tab': 0x09, 'Escape': 0x1B, 'Backspace': 0x08,
@@ -215,6 +243,7 @@ function handleConnection(socket) {
 
   socket.on('mouse-move', (data) => {
     try {
+      if (!SetCursorPos) return;
       const bounds = monitors.getMonitorBounds(monitors.getActiveMonitor());
       const x = Math.round(data.x * bounds.width) + (bounds.x || 0);
       const y = Math.round(data.y * bounds.height) + (bounds.y || 0);
@@ -226,6 +255,7 @@ function handleConnection(socket) {
 
   socket.on('mouse-move-relative', (data) => {
     try {
+      if (!GetCursorPos || !SetCursorPos) return;
       const point = { x: 0, y: 0 };
       GetCursorPos(point);
       const bounds = monitors.getMonitorBounds(monitors.getActiveMonitor());
@@ -236,6 +266,7 @@ function handleConnection(socket) {
       console.error('Mouse move relative error:', err.message);
     }
   });
+
 
   socket.on('mouse-down', (data) => {
     try {
