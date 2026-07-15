@@ -52,9 +52,9 @@ function setupStartupFolder() {
     const startupDir = path.join(os.homedir(), 'AppData', 'Roaming', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
     const vbsPath = path.join(startupDir, 'paperfly.vbs');
     
-    // VBScript to run node script hidden
-    const vbsContent = 'Set WshShell = CreateObject("WScript.Shell")\\n' +
-      'WshShell.Run """' + process.execPath + '"" ""' + SERVER_SCRIPT + '""", 0, False\\n';
+    // VBScript to run node script hidden (windowStyle=0 = hidden, bWaitOnReturn=False)
+    const vbsContent = 'Set WshShell = CreateObject("WScript.Shell")\r\n' +
+      'WshShell.Run """' + process.execPath + '"" ""' + SERVER_SCRIPT + '""", 0, False\r\n';
       
     fs.writeFileSync(vbsPath, vbsContent, 'utf-8');
     console.log('  Added to Windows Startup folder: paperfly.vbs');
