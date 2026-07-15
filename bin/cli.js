@@ -170,6 +170,21 @@ program
     }
   });
 
+program
+  .command('tray')
+  .description('Start Paperfly with a system tray icon')
+  .action(() => {
+    const trayScript = path.join(__dirname, 'tray.js');
+    const child = spawn(process.execPath, [trayScript], {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: false, // allow tray window to show
+    });
+    child.unref();
+    console.log('Paperfly tray started.');
+    console.log('Look for the PPR icon in your system tray (notification area).');
+  });
+
 if (process.argv.length === 2) {
   console.log(`\x1b[36m
   ____                        __ _       
@@ -183,3 +198,4 @@ if (process.argv.length === 2) {
 }
 
 program.parse();
+

@@ -51,14 +51,15 @@ function setupStartupFolder() {
   try {
     const startupDir = path.join(os.homedir(), 'AppData', 'Roaming', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
     const vbsPath = path.join(startupDir, 'paperfly.vbs');
-    
-    // VBScript to run node script hidden (windowStyle=0 = hidden, bWaitOnReturn=False)
+    const TRAY_SCRIPT = path.join(__dirname, 'tray.js');
+
+    // Launch the tray host (tray.js) hidden — no terminal window on startup
     const vbsContent = 'Set WshShell = CreateObject("WScript.Shell")\r\n' +
-      'WshShell.Run """' + process.execPath + '"" ""' + SERVER_SCRIPT + '""", 0, False\r\n';
-      
+      'WshShell.Run """' + process.execPath + '"" ""' + TRAY_SCRIPT + '""", 0, False\r\n';
+
     fs.writeFileSync(vbsPath, vbsContent, 'utf-8');
-    console.log('  Added to Windows Startup folder: paperfly.vbs');
-    console.log('  Service will start automatically at logon.');
+    console.log('  Added to Windows Startup folder: paperfly.vbs (tray mode)');
+    console.log('  Tray icon will appear automatically at logon.');
     return true;
   } catch (err) {
     console.log('  [!] Failed to add to Startup folder: ' + err.message);
