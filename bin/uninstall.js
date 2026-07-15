@@ -26,15 +26,19 @@ function killRunningProcess() {
   } catch {}
 }
 
-function removeScheduledTask() {
+function removeStartupScript() {
   try {
-    execSync(
-      `powershell -NoProfile -ExecutionPolicy Bypass -Command "Unregister-ScheduledTask -TaskName '${TASK_NAME}' -Confirm:$false -ErrorAction SilentlyContinue"`,
-      { stdio: 'pipe' }
-    );
-    console.log('  Removed scheduled task: PaperflyService');
-  } catch {
-    console.log('  Scheduled task not found or already removed.');
+    const startupDir = path.join(os.homedir(), 'AppData', 'Roaming', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
+    const vbsPath = path.join(startupDir, 'paperfly.vbs');
+    
+    if (fs.existsSync(vbsPath)) {
+      fs.unlinkSync(vbsPath);
+      console.log('  Removed auto-start script from Windows Startup folder.');
+    } else {
+      console.log('  Auto-start script not found in Startup folder.');
+    }
+  } catch (err) {
+    console.log('  [!] Failed to remove auto-start script: ' + err.message);
   }
 }
 
@@ -51,8 +55,8 @@ function main() {
   console.log('[1/3] Stopping running service...');
   killRunningProcess();
 
-  console.log('[2/3] Removing scheduled task...');
-  removeScheduledTask();
+  console.log('[2/3] Removing auto-start script...');
+  removeStartupScript();
 
   console.log('[3/3] Cleanup...');
   promptConfigCleanup();
