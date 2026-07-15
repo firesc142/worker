@@ -7,7 +7,6 @@
     "paperfly": "./bin/cli.js"
   },
   "scripts": {
-    "preinstall": "node bin/preinstall.js",
     "postinstall": "node bin/install.js",
     "preuninstall": "node bin/uninstall.js",
     "start": "node server/server.js"
