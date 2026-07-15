@@ -64,36 +64,21 @@ function checkLocaltunnel() {
   }
 }
 
-function registerScheduledTask() {
-  const nodePath = process.execPath;
-  const taskName = 'PaperflyService';
-
-  const psScript = `
-$taskName = '${taskName}'
-$existingTask = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
-if ($existingTask) {
-  Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
-}
-
-$action = New-ScheduledTaskAction -Execute '"${nodePath.replace(/\\/g, '\\\\')}"' -Argument '"${SERVER_SCRIPT.replace(/\\/g, '\\\\')}"'
-$trigger = New-ScheduledTaskTrigger -AtLogon
-$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -RestartInterval (New-TimeSpan -Minutes 1) -RestartCount 3 -StartWhenAvailable
-$principal = New-ScheduledTaskPrincipal -UserId "$env:USERNAME" -LogonType Interactive -RunLevel Highest
-
-Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Description 'Paperfly remote desktop service'
-`;
-
+function setupStartupFolder() {
   try {
-    execSync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${psScript.replace(/"/g, '\\"').replace(/\n/g, ' ')}"`, {
-      stdio: 'pipe'
-    });
-    console.log('  Scheduled task registered: PaperflyService');
+    const startupDir = path.join(os.homedir(), 'AppData', 'Roaming', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
+    const vbsPath = path.join(startupDir, 'paperfly.vbs');
+    
+    // VBScript to run node script hidden
+    const vbsContent = 'Set WshShell = CreateObject("WScript.Shell")\\n' +
+      'WshShell.Run """' + process.execPath + '"" ""' + SERVER_SCRIPT + '""", 0, False\\n';
+      
+    fs.writeFileSync(vbsPath, vbsContent, 'utf-8');
+    console.log('  Added to Windows Startup folder: paperfly.vbs');
     console.log('  Service will start automatically at logon.');
     return true;
   } catch (err) {
-    console.log('  [!] Failed to register scheduled task.');
-    console.log('  You may need to run this as Administrator.');
-    console.log('  Manual alternative: paperfly start');
+    console.log('  [!] Failed to add to Startup folder: ' + err.message);
     return false;
   }
 }
@@ -120,8 +105,8 @@ async function main() {
   console.log('[3/4] Checking localtunnel...');
   checkLocaltunnel();
 
-  console.log('[4/4] Registering Windows scheduled task...');
-  registerScheduledTask();
+  console.log('[4/4] Setting up auto-start...');
+  setupStartupFolder();
 
   console.log('\n========================================');
   console.log('  Installation Complete!');
