@@ -9,29 +9,26 @@ const STARTUP_DIR = path.join(
   'AppData', 'Roaming', 'Microsoft', 'Windows',
   'Start Menu', 'Programs', 'Startup'
 );
-const VBS_PATH = path.join(STARTUP_DIR, 'paperfly.vbs');
+const VBS_PATH = path.join(STARTUP_DIR, 'PaperFly.vbs');
 
-function resolveRuntimePaths() {
-  const trayScript = path.resolve(__dirname, 'tray.js');
+function buildVbsContent() {
   const nodeExe = process.execPath;
-  return { nodeExe, trayScript };
-}
-
-function buildVbsContent(nodeExe, trayScript) {
+  const trayScript = path.resolve(__dirname, 'tray.js');
   return (
-    'Set WshShell = CreateObject("WScript.Shell")\r\n' +
-    'WshShell.Run """' + nodeExe + '"" ""' + trayScript + '""", 0, False\r\n'
+    'CreateObject("WScript.Shell").Run """' + nodeExe + '"" ""' + trayScript + '"" --tray --skip-update --start", 0, False\r\n'
   );
 }
 
 /**
- * Verify VBS in Startup folder has correct paths; rewrite if stale.
+ * Self-repair: verify VBS in Startup folder has correct paths.
+ * Rewrites if stale or missing — ensures auto-start survives npm updates
+ * and Node.js version changes (which move the node.exe path).
+ *
  * Returns: 'ok' | 'repaired' | 'created' | 'error'
  */
 function ensureStartupScript() {
   try {
-    const { nodeExe, trayScript } = resolveRuntimePaths();
-    const expected = buildVbsContent(nodeExe, trayScript);
+    const expected = buildVbsContent();
 
     if (fs.existsSync(VBS_PATH)) {
       const current = fs.readFileSync(VBS_PATH, 'utf-8');
@@ -47,4 +44,4 @@ function ensureStartupScript() {
   }
 }
 
-module.exports = { ensureStartupScript, VBS_PATH };
+module.exports = { ensureStartupScript, VBS_PATH, STARTUP_DIR };

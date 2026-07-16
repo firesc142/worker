@@ -4,11 +4,8 @@ const os = require('os');
 const crypto = require('crypto');
 const { execSync } = require('child_process');
 
-const { ensureStartupScript } = require('./startup-repair');
-
 const CONFIG_DIR = path.join(os.homedir(), '.paperfly');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
-const SERVER_SCRIPT = path.join(__dirname, '..', 'server', 'server.js');
 const DEFAULT_PIN = '123456';
 
 function hashPin(pin) {
@@ -23,11 +20,10 @@ function createConfigDir() {
 }
 
 function initConfig() {
-  const configPath = CONFIG_FILE;
   let config = {};
 
-  if (fs.existsSync(configPath)) {
-    config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+  if (fs.existsSync(CONFIG_FILE)) {
+    config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
   }
 
   if (!config.pinHash) {
@@ -54,29 +50,7 @@ function initConfig() {
     console.log(`  Machine Name: ${config.machineName}`);
   }
 
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
-}
-
-
-
-function setupStartupFolder() {
-  try {
-    const startupDir = path.join(os.homedir(), 'AppData', 'Roaming', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
-    const vbsPath = path.join(startupDir, 'paperfly.vbs');
-    const TRAY_SCRIPT = path.join(__dirname, 'tray.js');
-
-    // Launch the tray host (tray.js) hidden — no terminal window on startup
-    const vbsContent = 'Set WshShell = CreateObject("WScript.Shell")\r\n' +
-      'WshShell.Run """' + process.execPath + '"" ""' + TRAY_SCRIPT + '""", 0, False\r\n';
-
-    fs.writeFileSync(vbsPath, vbsContent, 'utf-8');
-    console.log('  Added to Windows Startup folder: paperfly.vbs (tray mode)');
-    console.log('  Tray icon will appear automatically at logon.');
-    return true;
-  } catch (err) {
-    console.log('  [!] Failed to add to Startup folder: ' + err.message);
-    return false;
-  }
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
 }
 
 function createActivityLog() {
@@ -86,34 +60,71 @@ function createActivityLog() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Auto-start: VBScript in Windows Startup folder (same approach as 9remote)
+// ---------------------------------------------------------------------------
+function registerAutoStart() {
+  try {
+    const startupDir = path.join(
+      os.homedir(),
+      'AppData', 'Roaming', 'Microsoft', 'Windows',
+      'Start Menu', 'Programs', 'Startup'
+    );
+    const vbsPath = path.join(startupDir, 'PaperFly.vbs');
+    const trayScript = path.resolve(__dirname, 'tray.js');
+    const nodeExe = process.execPath;
+
+    // Match 9remote format: single-line, hidden window, non-blocking
+    const vbsContent =
+      'CreateObject("WScript.Shell").Run """' + nodeExe + '"" ""' + trayScript + '"" --tray --skip-update --start", 0, False\r\n';
+
+    fs.writeFileSync(vbsPath, vbsContent, 'utf-8');
+    console.log('  Registered auto-start: PaperFly.vbs');
+    console.log('  Location: ' + vbsPath);
+    return true;
+  } catch (err) {
+    console.log('  [!] Failed to register auto-start: ' + err.message);
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Immediate launch after install (hidden, no terminal flash)
+// ---------------------------------------------------------------------------
 function launchTrayNow() {
   try {
-    const TRAY_SCRIPT = path.join(__dirname, 'tray.js');
+    const trayScript = path.resolve(__dirname, 'tray.js');
+    const nodeExe = process.execPath;
     const tmpVbs = path.join(os.tmpdir(), 'paperfly_launch.vbs');
-    const vbsContent = 'Set WshShell = CreateObject("WScript.Shell")\r\n' +
-      'WshShell.Run """' + process.execPath + '"" ""' + TRAY_SCRIPT + '""", 0, False\r\n';
+
+    const vbsContent =
+      'CreateObject("WScript.Shell").Run """' + nodeExe + '"" ""' + trayScript + '"" --start", 0, False\r\n';
+
     fs.writeFileSync(tmpVbs, vbsContent, 'utf-8');
     execSync(`cscript //nologo "${tmpVbs}"`, { stdio: 'ignore', windowsHide: true });
     try { fs.unlinkSync(tmpVbs); } catch {}
-    console.log('  Paperfly tray launched now.');
+    console.log('  Paperfly tray launched.');
   } catch (err) {
     try {
       const { spawn } = require('child_process');
-      const TRAY_SCRIPT = path.join(__dirname, 'tray.js');
-      const child = spawn(process.execPath, [TRAY_SCRIPT], {
+      const trayScript = path.resolve(__dirname, 'tray.js');
+      const child = spawn(process.execPath, [trayScript, '--start'], {
         detached: true,
         stdio: 'ignore',
-        windowsHide: false,
+        windowsHide: true,
       });
       child.unref();
-      console.log('  Paperfly tray launched now (fallback).');
+      console.log('  Paperfly tray launched (spawn fallback).');
     } catch (err2) {
       console.log('  [!] Could not launch tray now: ' + err2.message);
-      console.log('  The app will start automatically after PC restart.');
+      console.log('  It will start automatically at next logon.');
     }
   }
 }
 
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
 async function main() {
   console.log('\n========================================');
   console.log('  Paperfly - Installation Setup');
@@ -126,8 +137,8 @@ async function main() {
   initConfig();
   createActivityLog();
 
-  console.log('[3/4] Setting up auto-start...');
-  setupStartupFolder();
+  console.log('[3/4] Registering auto-start...');
+  registerAutoStart();
 
   console.log('[4/4] Launching Paperfly...');
   launchTrayNow();

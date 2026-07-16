@@ -30,9 +30,9 @@ function removeStartupScript() {
   try {
     if (fs.existsSync(VBS_PATH)) {
       fs.unlinkSync(VBS_PATH);
-      console.log('  Removed auto-start script from Windows Startup folder.');
+      console.log('  Removed auto-start script: PaperFly.vbs');
     } else {
-      console.log('  Auto-start script not found in Startup folder.');
+      console.log('  Auto-start script not found (already removed).');
     }
   } catch (err) {
     console.log('  [!] Failed to remove auto-start script: ' + err.message);
@@ -52,7 +52,7 @@ function main() {
   console.log('[1/3] Stopping running service...');
   killRunningProcess();
 
-  console.log('[2/3] Removing auto-start script...');
+  console.log('[2/3] Removing auto-start...');
   removeStartupScript();
 
   console.log('[3/3] Cleanup...');
