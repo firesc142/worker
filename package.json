@@ -35,14 +35,13 @@
     "multer": "^2.0.0",
     "node-screenshots": "^0.2.8",
     "screenshot-desktop": "^1.15.0",
-    "sharp": "^0.33.5",
     "socket.io": "^4.7.2",
     "systray2": "^2.1.4",
-    "uuid": "^11.0.0",
     "wake_on_lan": "^1.0.0"
   },
   "optionalDependencies": {
-    "koffi": "^2.9.0"
+    "koffi": "^2.9.0",
+    "sharp": "^0.33.5"
   },
   "allowScripts": {
     "koffi@2.16.2": true,
