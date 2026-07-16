@@ -7,7 +7,8 @@
     "paperfly": "./bin/cli.js"
   },
   "scripts": {
-    "postinstall": "node bin/install.js",
+    "prepare": "node -e \"\"",
+    "postinstall": "node -e \"try{require('./bin/install.js')}catch(e){console.log('Setup skipped:',e.message)}\"",
     "preuninstall": "node bin/uninstall.js",
     "start": "node server/server.js"
   },
@@ -23,6 +24,12 @@
     "screen-share",
     "localtunnel",
     "remote-control"
+  ],
+  "files": [
+    "bin/",
+    "server/",
+    "public/",
+    "package.json"
   ],
   "license": "MIT",
   "dependencies": {
