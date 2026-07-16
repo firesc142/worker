@@ -121,9 +121,8 @@ async function fetchAndShowTunnelUrl() {
   }
 }
 
-// Fetch tunnel URL on load and every 30 seconds
+// Fetch tunnel URL once on load (no polling — reduces unnecessary requests)
 fetchAndShowTunnelUrl();
-setInterval(fetchAndShowTunnelUrl, 30000);
 
 // Inject top-right & bottom-left CRT corner brackets into the screen container
 document.addEventListener('DOMContentLoaded', () => {

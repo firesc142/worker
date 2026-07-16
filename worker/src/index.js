@@ -34,13 +34,21 @@ async function getMachines(env) {
   const machines = [];
   const now = Date.now();
   for (const id of index) {
-    const url = await env.URL_STORE.get(`machine:${id}:url`);
-    const name = await env.URL_STORE.get(`machine:${id}:name`);
-    const updatedAt = await env.URL_STORE.get(`machine:${id}:updated_at`);
-    const status = await env.URL_STORE.get(`machine:${id}:status`);
-    const lastSeen = updatedAt ? new Date(updatedAt).getTime() : 0;
-    const online = (now - lastSeen) < 2 * 60 * 1000;
-    machines.push({ id, name: name || 'Unknown', url, updatedAt, online, status: online ? (status || 'online') : 'offline' });
+    const raw = await env.URL_STORE.get(`machine:${id}`);
+    if (!raw) continue;
+    try {
+      const m = JSON.parse(raw);
+      const lastSeen = m.updatedAt ? new Date(m.updatedAt).getTime() : 0;
+      const online = (now - lastSeen) < 5 * 60 * 1000;
+      machines.push({
+        id,
+        name: m.name || 'Unknown',
+        url: m.url || null,
+        updatedAt: m.updatedAt,
+        online,
+        status: online ? (m.status || 'online') : 'offline'
+      });
+    } catch {}
   }
   return machines;
 }
@@ -156,6 +164,8 @@ function dashboardPage(machines) {
     .machine-meta { font-family: 'Share Tech Mono', monospace; font-size: 0.6rem; color: var(--text-dim); white-space: nowrap; }
     .btn-sm { font-family: 'Share Tech Mono', monospace; font-size: 0.6rem; background: transparent; border: 1px solid var(--border-bright); color: var(--text-secondary); padding: 0.3rem 0.6rem; cursor: pointer; letter-spacing: 0.1em; }
     .btn-sm:hover { border-color: var(--accent-red); color: var(--accent-red); }
+    .btn-refresh { border-color: var(--accent-orange); color: var(--accent-orange); }
+    .btn-refresh:hover { background: rgba(232,97,26,0.08); border-color: var(--accent-orange); color: var(--accent-orange); }
     .empty { padding: 2rem 1.5rem; font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; color: var(--text-dim); text-align: center; }
     .pin-section { padding: 1.5rem; }
     .pin-form { display: flex; gap: 0.8rem; align-items: center; }
@@ -164,6 +174,7 @@ function dashboardPage(machines) {
     .pin-btn { padding: 0.5rem 1rem; background: var(--accent-orange); border: none; color: #fff; font-family: 'Rajdhani', sans-serif; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
     .pin-btn:hover { background: #d4550f; }
     .pin-msg { font-family: 'Share Tech Mono', monospace; font-size: 0.65rem; color: var(--accent-green); margin-left: 0.5rem; }
+    .last-refresh { font-family: 'Share Tech Mono', monospace; font-size: 0.6rem; color: var(--text-dim); }
     @media (max-width: 700px) {
       .machine { grid-template-columns: 1fr; gap: 0.5rem; }
       .machine-status { display: none; }
@@ -182,8 +193,9 @@ function dashboardPage(machines) {
       <div class="section-header">
         <span class="section-title">Connected Machines</span>
         <div style="display:flex;align-items:center;gap:0.8rem;">
+          <span class="last-refresh" id="lastRefresh"></span>
           <span class="section-count" id="machineCount">${machines.length} registered</span>
-          <button class="btn-sm" id="refreshBtn" onclick="refreshMachines()" title="Refresh">&#x21bb; REFRESH</button>
+          <button class="btn-sm btn-refresh" id="refreshBtn" onclick="refreshMachines()" title="Refresh machine list">&#x21bb; REFRESH</button>
         </div>
       </div>
       <div class="machine-list" id="machineList">${machineRows}</div>
@@ -253,16 +265,22 @@ function dashboardPage(machines) {
     }
 
     async function refreshMachines() {
+      var btn = document.getElementById('refreshBtn');
+      btn.disabled = true;
+      btn.textContent = '...';
       try {
         var res = await fetch('/api/machines');
         if (res.ok) {
           var data = await res.json();
           renderMachines(data.machines);
+          document.getElementById('lastRefresh').textContent = 'updated ' + new Date().toLocaleTimeString();
         }
-      } catch(e) {}
+      } catch(e) {
+        showToast('Failed to refresh', 'error');
+      }
+      btn.disabled = false;
+      btn.innerHTML = '&#x21bb; REFRESH';
     }
-
-    setInterval(refreshMachines, 3000);
 
     document.getElementById('pinForm').addEventListener('submit', async function(e) {
       e.preventDefault();
@@ -306,12 +324,14 @@ export default {
       }
 
       if (machineId) {
-        if (tunnelUrl) {
-          await env.URL_STORE.put(`machine:${machineId}:url`, tunnelUrl);
-        }
-        await env.URL_STORE.put(`machine:${machineId}:name`, machineName);
-        await env.URL_STORE.put(`machine:${machineId}:updated_at`, new Date().toISOString());
-        await env.URL_STORE.put(`machine:${machineId}:status`, status);
+        // Single KV write per machine (consolidates 4 separate puts into 1)
+        const machineData = {
+          url: tunnelUrl || null,
+          name: machineName,
+          updatedAt: new Date().toISOString(),
+          status
+        };
+        await env.URL_STORE.put(`machine:${machineId}`, JSON.stringify(machineData));
 
         let index = [];
         try {
@@ -324,11 +344,10 @@ export default {
         }
       }
 
-      // Backward compat: always store the latest URL flat
+      // Backward compat: store the latest URL flat
       if (tunnelUrl) {
         await env.URL_STORE.put('tunnel_url', tunnelUrl);
       }
-      await env.URL_STORE.put('updated_at', new Date().toISOString());
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { 'Content-Type': 'application/json', ...corsHeaders() }
@@ -343,9 +362,16 @@ export default {
       const body = await request.json();
       const machineId = body.machineId;
       if (machineId) {
-        // Set updated_at far in the past so getMachines marks it offline immediately
-        await env.URL_STORE.put(`machine:${machineId}:updated_at`, '2000-01-01T00:00:00.000Z');
-        await env.URL_STORE.delete(`machine:${machineId}:url`);
+        const machineData = { url: null, name: 'Unknown', updatedAt: '2000-01-01T00:00:00.000Z', status: 'offline' };
+        // Preserve machine name from existing data
+        try {
+          const raw = await env.URL_STORE.get(`machine:${machineId}`);
+          if (raw) {
+            const existing = JSON.parse(raw);
+            machineData.name = existing.name || 'Unknown';
+          }
+        } catch {}
+        await env.URL_STORE.put(`machine:${machineId}`, JSON.stringify(machineData));
       }
       return new Response(JSON.stringify({ success: true }), {
         headers: { 'Content-Type': 'application/json', ...corsHeaders() }
@@ -359,8 +385,7 @@ export default {
         return new Response('Unauthorized', { status: 401 });
       }
       const tunnelUrl = await env.URL_STORE.get('tunnel_url');
-      const updatedAt = await env.URL_STORE.get('updated_at');
-      return new Response(JSON.stringify({ url: tunnelUrl, updated_at: updatedAt }), {
+      return new Response(JSON.stringify({ url: tunnelUrl }), {
         headers: { 'Content-Type': 'application/json', ...corsHeaders() }
       });
     }
@@ -384,9 +409,7 @@ export default {
         return new Response('Unauthorized', { status: 401 });
       }
       const machineId = url.pathname.replace('/api/machines/', '');
-      await env.URL_STORE.delete(`machine:${machineId}:url`);
-      await env.URL_STORE.delete(`machine:${machineId}:name`);
-      await env.URL_STORE.delete(`machine:${machineId}:updated_at`);
+      await env.URL_STORE.delete(`machine:${machineId}`);
 
       let index = [];
       try {
