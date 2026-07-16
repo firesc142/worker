@@ -3,7 +3,6 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
-const { v4: uuidv4 } = require('uuid');
 
 const CONFIG_DIR = path.join(os.homedir(), '.paperfly');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
