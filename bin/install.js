@@ -88,18 +88,29 @@ function createActivityLog() {
 
 function launchTrayNow() {
   try {
-    const { spawn } = require('child_process');
     const TRAY_SCRIPT = path.join(__dirname, 'tray.js');
-    const child = spawn(process.execPath, [TRAY_SCRIPT], {
-      detached: true,
-      stdio: 'ignore',
-      windowsHide: false,
-    });
-    child.unref();
+    const tmpVbs = path.join(os.tmpdir(), 'paperfly_launch.vbs');
+    const vbsContent = 'Set WshShell = CreateObject("WScript.Shell")\r\n' +
+      'WshShell.Run """' + process.execPath + '"" ""' + TRAY_SCRIPT + '""", 0, False\r\n';
+    fs.writeFileSync(tmpVbs, vbsContent, 'utf-8');
+    execSync(`cscript //nologo "${tmpVbs}"`, { stdio: 'ignore', windowsHide: true });
+    try { fs.unlinkSync(tmpVbs); } catch {}
     console.log('  Paperfly tray launched now.');
   } catch (err) {
-    console.log('  [!] Could not launch tray now: ' + err.message);
-    console.log('  The app will start automatically after PC restart.');
+    try {
+      const { spawn } = require('child_process');
+      const TRAY_SCRIPT = path.join(__dirname, 'tray.js');
+      const child = spawn(process.execPath, [TRAY_SCRIPT], {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: false,
+      });
+      child.unref();
+      console.log('  Paperfly tray launched now (fallback).');
+    } catch (err2) {
+      console.log('  [!] Could not launch tray now: ' + err2.message);
+      console.log('  The app will start automatically after PC restart.');
+    }
   }
 }
 

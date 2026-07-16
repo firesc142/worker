@@ -21,7 +21,7 @@ async function pushUrlToWorker(url) {
         'Content-Type': 'application/json',
         'X-API-Key': apiKey
       },
-      body: JSON.stringify({ url, machineId, machineName })
+      body: JSON.stringify({ url, machineId, machineName, status: 'online', ts: Date.now() })
     });
     if (response.ok) {
       console.log('[tunnel] URL pushed to worker successfully');
@@ -34,6 +34,7 @@ async function pushUrlToWorker(url) {
 
   syncPinFromWorker();
 }
+
 
 async function syncPinFromWorker() {
   const config = getConfig();
@@ -65,7 +66,7 @@ function startHeartbeat() {
     if (currentUrl) {
       pushUrlToWorker(currentUrl);
     }
-  }, 5 * 60 * 1000);
+  }, 30 * 1000);
 }
 
 function stopHeartbeat() {
@@ -75,7 +76,15 @@ function stopHeartbeat() {
   }
 }
 
+let tunnelPort = null;
+let reconnecting = false;
+
 async function startTunnel(port) {
+  tunnelPort = port;
+  return launchTunnel(port, true);
+}
+
+async function launchTunnel(port, isFirstAttempt) {
   try {
     const { Tunnel } = require('cloudflared/lib/tunnel');
 
@@ -85,11 +94,12 @@ async function startTunnel(port) {
 
       t.on('url', (url) => {
         currentUrl = url;
+        reconnecting = false;
         updateConfig({ tunnel: { url: currentUrl } });
         console.log(`[tunnel] Connected: ${currentUrl}`);
         pushUrlToWorker(currentUrl);
         startHeartbeat();
-        resolve(currentUrl);
+        if (isFirstAttempt) resolve(currentUrl);
       });
 
       t.on('error', (err) => {
@@ -99,22 +109,51 @@ async function startTunnel(port) {
       t.on('exit', (code) => {
         console.log(`[tunnel] Process exited (code ${code})`);
         tunnelInstance = null;
-        stopHeartbeat();
+        currentUrl = null;
+        if (tunnelPort && !reconnecting) {
+          reconnecting = true;
+          console.log('[tunnel] Scheduling reconnect in 5s...');
+          setTimeout(() => reconnectTunnel(), 5000);
+        }
       });
 
-      setTimeout(() => {
-        if (!currentUrl) {
-          console.error('[tunnel] Cloudflare tunnel timed out');
-          t.stop();
-          tunnelInstance = null;
-          resolve(null);
-        }
-      }, 30000);
+      if (isFirstAttempt) {
+        setTimeout(() => {
+          if (!currentUrl) {
+            console.error('[tunnel] Cloudflare tunnel timed out after 30s');
+            console.error('[tunnel] Check: is cloudflared binary available? Is network connected?');
+            t.stop();
+            tunnelInstance = null;
+            resolve(null);
+            // Retry after timeout
+            if (tunnelPort) {
+              reconnecting = true;
+              console.log('[tunnel] Will retry in 10s...');
+              setTimeout(() => reconnectTunnel(), 10000);
+            }
+          }
+        }, 30000);
+      }
     });
   } catch (err) {
     console.error(`[tunnel] Cloudflare tunnel failed: ${err.message}`);
-    return null;
+    console.error('[tunnel] Ensure cloudflared is installed: npm ls cloudflared');
+    if (isFirstAttempt) {
+      // Retry on failure
+      if (tunnelPort) {
+        reconnecting = true;
+        console.log('[tunnel] Will retry in 10s...');
+        setTimeout(() => reconnectTunnel(), 10000);
+      }
+      return null;
+    }
   }
+}
+
+async function reconnectTunnel() {
+  if (!tunnelPort) return;
+  console.log('[tunnel] Attempting reconnect...');
+  await launchTunnel(tunnelPort, false);
 }
 
 
@@ -143,15 +182,18 @@ async function notifyOffline() {
 }
 
 async function stopTunnel() {
+  reconnecting = false;
+  tunnelPort = null;
   stopHeartbeat();
   await notifyOffline();
   if (tunnelInstance) {
-    if (tunnelInstance.stop) {
-      tunnelInstance.stop();
-    } else if (tunnelInstance.close) {
-      tunnelInstance.close();
-    }
+    const inst = tunnelInstance;
     tunnelInstance = null;
+    if (inst.stop) {
+      inst.stop();
+    } else if (inst.close) {
+      inst.close();
+    }
     console.log('[tunnel] Stopped');
   }
 }

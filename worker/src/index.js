@@ -37,9 +37,10 @@ async function getMachines(env) {
     const url = await env.URL_STORE.get(`machine:${id}:url`);
     const name = await env.URL_STORE.get(`machine:${id}:name`);
     const updatedAt = await env.URL_STORE.get(`machine:${id}:updated_at`);
+    const status = await env.URL_STORE.get(`machine:${id}:status`);
     const lastSeen = updatedAt ? new Date(updatedAt).getTime() : 0;
-    const online = (now - lastSeen) < 10 * 60 * 1000;
-    machines.push({ id, name: name || 'Unknown', url, updatedAt, online });
+    const online = (now - lastSeen) < 2 * 60 * 1000;
+    machines.push({ id, name: name || 'Unknown', url, updatedAt, online, status: online ? (status || 'online') : 'offline' });
   }
   return machines;
 }
@@ -96,17 +97,20 @@ function loginPage(error = '') {
 function dashboardPage(machines) {
   const machineRows = machines.length === 0
     ? '<p class="empty">No machines registered yet. Install Paperfly on a PC to get started.</p>'
-    : machines.map(m => `
+    : machines.map(m => {
+      const statusClass = m.status === 'connecting' ? 'connecting' : (m.online ? 'online' : 'offline');
+      const statusLabel = m.status === 'connecting' ? 'CONNECTING' : (m.online ? 'ONLINE' : 'OFFLINE');
+      return `
       <div class="machine">
-        <div class="machine-status"><span class="dot ${m.online ? 'online' : 'offline'}"></span></div>
+        <div class="machine-status"><span class="dot ${statusClass}"></span></div>
         <div class="machine-info">
           <div class="machine-name">${m.name}</div>
           <div class="machine-id">${m.id.slice(0, 8)}</div>
         </div>
-        <div class="machine-url">${m.url ? '<a href="' + m.url + '" target="_blank">' + m.url + '</a>' : '<span class="no-url">No URL</span>'}</div>
-        <div class="machine-meta">${m.online ? 'ONLINE' : 'OFFLINE'} &mdash; ${m.updatedAt ? new Date(m.updatedAt).toLocaleString() : 'never'}</div>
+        <div class="machine-url">${m.url ? '<a href="' + m.url + '" target="_blank">' + m.url + '</a>' : '<span class="no-url">' + (m.status === 'connecting' ? 'Establishing tunnel...' : 'No URL') + '</span>'}</div>
+        <div class="machine-meta">${statusLabel} &mdash; ${m.updatedAt ? new Date(m.updatedAt).toLocaleString() : 'never'}</div>
         <button class="btn-sm" onclick="deleteMachine('${m.id}')">Remove</button>
-      </div>`).join('');
+      </div>`;}).join('');
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -141,7 +145,9 @@ function dashboardPage(machines) {
     .machine:last-child { border-bottom: none; }
     .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
     .dot.online { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); }
+    .dot.connecting { background: #ffa726; box-shadow: 0 0 6px #ffa726; animation: pulse 1.2s infinite; }
     .dot.offline { background: var(--accent-red); box-shadow: 0 0 6px var(--accent-red); }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
     .machine-name { font-weight: 600; font-size: 0.9rem; }
     .machine-id { font-family: 'Share Tech Mono', monospace; font-size: 0.6rem; color: var(--text-dim); }
     .machine-url a { font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; color: var(--accent-blue); text-decoration: none; word-break: break-all; }
@@ -225,17 +231,19 @@ function dashboardPage(machines) {
     function renderMachines(machines) {
       var list = document.getElementById('machineList');
       var count = document.getElementById('machineCount');
-      count.textContent = machines.length + ' registered';
+      var onlineCount = machines.filter(function(m) { return m.online; }).length;
+      count.textContent = onlineCount + '/' + machines.length + ' online';
       if (machines.length === 0) {
         list.innerHTML = '<p class="empty">No machines registered yet. Install Paperfly on a PC to get started.</p>';
         return;
       }
       list.innerHTML = machines.map(function(m) {
-        var online = m.online;
-        var urlHtml = m.url ? '<a href="' + m.url + '" target="_blank">' + m.url + '</a>' : '<span class="no-url">No URL</span>';
-        var meta = (online ? 'ONLINE' : 'OFFLINE') + ' \\u2014 ' + (m.updatedAt ? new Date(m.updatedAt).toLocaleString() : 'never');
+        var statusClass = m.online ? (m.status === 'connecting' ? 'connecting' : 'online') : 'offline';
+        var statusText = m.online ? (m.status === 'connecting' ? 'CONNECTING' : 'ONLINE') : 'OFFLINE';
+        var urlHtml = m.url ? '<a href="' + m.url + '" target="_blank">' + m.url + '</a>' : '<span class="no-url">' + (m.status === 'connecting' ? 'Establishing tunnel...' : 'No URL') + '</span>';
+        var meta = statusText + ' \\u2014 ' + (m.updatedAt ? new Date(m.updatedAt).toLocaleString() : 'never');
         return '<div class="machine">' +
-          '<div class="machine-status"><span class="dot ' + (online ? 'online' : 'offline') + '"></span></div>' +
+          '<div class="machine-status"><span class="dot ' + statusClass + '"></span></div>' +
           '<div class="machine-info"><div class="machine-name">' + m.name + '</div><div class="machine-id">' + m.id.slice(0,8) + '</div></div>' +
           '<div class="machine-url">' + urlHtml + '</div>' +
           '<div class="machine-meta">' + meta + '</div>' +
@@ -245,9 +253,6 @@ function dashboardPage(machines) {
     }
 
     async function refreshMachines() {
-      var btn = document.getElementById('refreshBtn');
-      btn.disabled = true;
-      btn.style.opacity = '0.5';
       try {
         var res = await fetch('/api/machines');
         if (res.ok) {
@@ -255,11 +260,9 @@ function dashboardPage(machines) {
           renderMachines(data.machines);
         }
       } catch(e) {}
-      btn.disabled = false;
-      btn.style.opacity = '1';
     }
 
-    setInterval(refreshMachines, 10000);
+    setInterval(refreshMachines, 3000);
 
     document.getElementById('pinForm').addEventListener('submit', async function(e) {
       e.preventDefault();
@@ -296,15 +299,19 @@ export default {
       const tunnelUrl = body.url;
       const machineId = body.machineId;
       const machineName = body.machineName || 'Unknown';
+      const status = body.status || 'online';
 
-      if (!tunnelUrl) {
-        return new Response('Missing url field', { status: 400 });
+      if (!machineId && !tunnelUrl) {
+        return new Response('Missing machineId or url field', { status: 400 });
       }
 
       if (machineId) {
-        await env.URL_STORE.put(`machine:${machineId}:url`, tunnelUrl);
+        if (tunnelUrl) {
+          await env.URL_STORE.put(`machine:${machineId}:url`, tunnelUrl);
+        }
         await env.URL_STORE.put(`machine:${machineId}:name`, machineName);
         await env.URL_STORE.put(`machine:${machineId}:updated_at`, new Date().toISOString());
+        await env.URL_STORE.put(`machine:${machineId}:status`, status);
 
         let index = [];
         try {
@@ -318,7 +325,9 @@ export default {
       }
 
       // Backward compat: always store the latest URL flat
-      await env.URL_STORE.put('tunnel_url', tunnelUrl);
+      if (tunnelUrl) {
+        await env.URL_STORE.put('tunnel_url', tunnelUrl);
+      }
       await env.URL_STORE.put('updated_at', new Date().toISOString());
 
       return new Response(JSON.stringify({ success: true }), {
