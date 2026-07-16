@@ -3,7 +3,7 @@ const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
 const { execSync } = require('child_process');
-const { v4: uuidv4 } = require('uuid');
+
 const { ensureStartupScript } = require('./startup-repair');
 
 const CONFIG_DIR = path.join(os.homedir(), '.paperfly');
@@ -45,7 +45,7 @@ function initConfig() {
   }
 
   if (!config.machineId) {
-    config.machineId = uuidv4();
+    config.machineId = crypto.randomUUID();
     console.log(`  Machine ID: ${config.machineId}`);
   }
 

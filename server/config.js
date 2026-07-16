@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
-const { v4: uuidv4 } = require('uuid');
+
 
 const CONFIG_DIR = path.join(os.homedir(), '.paperfly');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
@@ -60,7 +60,7 @@ function getConfig() {
 
     // Auto-generate machineId on first run
     if (!merged.machineId) {
-      merged.machineId = uuidv4();
+      merged.machineId = crypto.randomUUID();
       merged.machineName = merged.machineName || os.hostname();
       saveConfig(merged);
     }
