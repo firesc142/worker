@@ -98,13 +98,16 @@ function startServer() {
 
 function stopServer() {
   if (serverProc) {
-    try { serverProc.kill(); } catch {}
+    try { serverProc.kill('SIGTERM'); } catch {}
     serverProc = null;
   }
   if (fs.existsSync(PID_FILE)) {
     try {
       const pid = parseInt(fs.readFileSync(PID_FILE, 'utf-8').trim(), 10);
-      execSync(`taskkill /PID ${pid} /T /F`, { stdio: 'ignore' });
+      try { process.kill(pid, 'SIGTERM'); } catch {}
+      setTimeout(() => {
+        try { process.kill(pid, 0); execSync(`taskkill /PID ${pid} /T /F`, { stdio: 'ignore' }); } catch {}
+      }, 3000);
     } catch {}
     try { fs.unlinkSync(PID_FILE); } catch {}
   }

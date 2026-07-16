@@ -148,8 +148,33 @@ async function startLocaltunnel(port) {
   }
 }
 
-function stopTunnel() {
+async function notifyOffline() {
+  const config = getConfig();
+  const workerUrl = config.urlWorker?.endpoint;
+  const apiKey = config.urlWorker?.apiKey;
+  const machineId = config.machineId;
+
+  if (!workerUrl || !apiKey || !machineId) return;
+
+  try {
+    const baseUrl = workerUrl.replace(/\/api\/url$/, '');
+    await fetch(`${baseUrl}/api/offline`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': apiKey
+      },
+      body: JSON.stringify({ machineId })
+    });
+    console.log('[tunnel] Offline notification sent');
+  } catch (err) {
+    console.error(`[tunnel] Failed to send offline notification: ${err.message}`);
+  }
+}
+
+async function stopTunnel() {
   stopHeartbeat();
+  await notifyOffline();
   if (tunnelInstance) {
     if (tunnelInstance.stop) {
       tunnelInstance.stop();

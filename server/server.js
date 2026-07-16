@@ -138,9 +138,9 @@ async function start() {
   });
 }
 
-function shutdown() {
+async function shutdown() {
   console.log('\n[server] Shutting down...');
-  stopTunnel();
+  await stopTunnel();
   removePidFile();
   server.close(() => {
     process.exit(0);
