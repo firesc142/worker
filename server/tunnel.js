@@ -50,7 +50,7 @@ async function syncPinFromWorker() {
     if (response.ok) {
       const data = await response.json();
       if (data.pin_hash) {
-        updateConfig({ pin_hash: data.pin_hash });
+        updateConfig({ pin_hash: data.pin_hash, pinHash: null });
         console.log('[tunnel] PIN synced from worker');
       }
     }

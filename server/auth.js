@@ -53,7 +53,8 @@ router.post('/api/auth/login', (req, res) => {
   const config = getConfig();
   const hashed = hashPin(pin);
 
-  if (hashed === config.pin_hash || hashed === config.pinHash) {
+  const storedHash = config.pin_hash || config.pinHash;
+  if (hashed === storedHash) {
     clearFailures(ip);
     req.session.authenticated = true;
     req.session.loginTime = Date.now();

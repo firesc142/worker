@@ -195,16 +195,36 @@ function dashboardPage(machines) {
     </div>
   </div>
   <script>
+    function showToast(message, type) {
+      var existing = document.getElementById('toast');
+      if (existing) existing.remove();
+      var toast = document.createElement('div');
+      toast.id = 'toast';
+      toast.textContent = message;
+      toast.style.cssText = 'position:fixed;top:1.5rem;right:1.5rem;padding:0.7rem 1.2rem;font-family:Share Tech Mono,monospace;font-size:0.75rem;letter-spacing:0.08em;border:1px solid;z-index:9999;animation:fadeIn 0.3s ease;';
+      if (type === 'success') {
+        toast.style.background = '#1a2e1a';
+        toast.style.color = '#3ddc84';
+        toast.style.borderColor = '#2a4a2a';
+      } else {
+        toast.style.background = '#2e1a1a';
+        toast.style.color = '#ef5350';
+        toast.style.borderColor = '#4a2a2a';
+      }
+      document.body.appendChild(toast);
+      setTimeout(function() { toast.remove(); }, 3000);
+    }
+
     async function deleteMachine(id) {
       if (!confirm('Remove this machine from the dashboard?')) return;
-      const res = await fetch('/api/machines/' + id, { method: 'DELETE' });
-      if (res.ok) refreshMachines();
-      else alert('Failed to remove machine');
+      var res = await fetch('/api/machines/' + id, { method: 'DELETE' });
+      if (res.ok) { showToast('Machine removed', 'success'); refreshMachines(); }
+      else showToast('Failed to remove machine', 'error');
     }
 
     function renderMachines(machines) {
-      const list = document.getElementById('machineList');
-      const count = document.getElementById('machineCount');
+      var list = document.getElementById('machineList');
+      var count = document.getElementById('machineCount');
       count.textContent = machines.length + ' registered';
       if (machines.length === 0) {
         list.innerHTML = '<p class="empty">No machines registered yet. Install Paperfly on a PC to get started.</p>';
@@ -213,13 +233,13 @@ function dashboardPage(machines) {
       list.innerHTML = machines.map(function(m) {
         var online = m.online;
         var urlHtml = m.url ? '<a href="' + m.url + '" target="_blank">' + m.url + '</a>' : '<span class="no-url">No URL</span>';
-        var meta = (online ? 'ONLINE' : 'OFFLINE') + ' &mdash; ' + (m.updatedAt ? new Date(m.updatedAt).toLocaleString() : 'never');
+        var meta = (online ? 'ONLINE' : 'OFFLINE') + ' \\u2014 ' + (m.updatedAt ? new Date(m.updatedAt).toLocaleString() : 'never');
         return '<div class="machine">' +
           '<div class="machine-status"><span class="dot ' + (online ? 'online' : 'offline') + '"></span></div>' +
           '<div class="machine-info"><div class="machine-name">' + m.name + '</div><div class="machine-id">' + m.id.slice(0,8) + '</div></div>' +
           '<div class="machine-url">' + urlHtml + '</div>' +
           '<div class="machine-meta">' + meta + '</div>' +
-          '<button class="btn-sm" onclick="deleteMachine(\'' + m.id + '\')">Remove</button>' +
+          '<button class="btn-sm" onclick="deleteMachine(\\x27' + m.id + '\\x27)">Remove</button>' +
         '</div>';
       }).join('');
     }
@@ -241,19 +261,17 @@ function dashboardPage(machines) {
 
     setInterval(refreshMachines, 10000);
 
-    document.getElementById('pinForm').addEventListener('submit', async (e) => {
+    document.getElementById('pinForm').addEventListener('submit', async function(e) {
       e.preventDefault();
-      const pin = document.getElementById('pinInput').value;
-      const res = await fetch('/api/pin', {
+      var pin = document.getElementById('pinInput').value;
+      var res = await fetch('/api/pin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin })
+        body: JSON.stringify({ pin: pin })
       });
-      const msg = document.getElementById('pinMsg');
-      if (res.ok) { msg.textContent = 'PIN updated'; msg.style.color = 'var(--accent-green)'; }
-      else { msg.textContent = 'Failed'; msg.style.color = 'var(--accent-red)'; }
+      if (res.ok) showToast('PIN updated successfully', 'success');
+      else showToast('Failed to update PIN', 'error');
       document.getElementById('pinInput').value = '';
-      setTimeout(() => { msg.textContent = ''; }, 3000);
     });
   </script>
 </body>

@@ -10,8 +10,8 @@ const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 const DEFAULT_CONFIG = {
   machineId: null,
   machineName: os.hostname(),
-  pin_hash: '155e0419caf7a904d2c2c6a31d9fb080515236224351e8fcac96c47f2e39f4e6',
-  pinHash: '155e0419caf7a904d2c2c6a31d9fb080515236224351e8fcac96c47f2e39f4e6',
+  pin_hash: 'e5ae86cc55fd690333095a4b02a4da5c1900ac0f768fdf308149127648174d50',
+  pinHash: null,
   port: 3000,
   session_secret: crypto.randomUUID(),
   sessionSecret: null,
