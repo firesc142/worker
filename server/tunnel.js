@@ -118,7 +118,7 @@ async function launchTunnel(port, isFirstAttempt) {
       if (isFirstAttempt) {
         setTimeout(() => {
           if (!currentUrl) {
-            console.error('[tunnel] Cloudflare tunnel timed out after 30s');
+            console.error('[tunnel] Cloudflare tunnel timed out after 60s');
             try { t.stop(); } catch {}
             tunnelInstance = null;
             resolve(null);
@@ -126,7 +126,7 @@ async function launchTunnel(port, isFirstAttempt) {
               scheduleReconnect();
             }
           }
-        }, 30000);
+        }, 60000);
       }
     });
   } catch (err) {

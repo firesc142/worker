@@ -182,8 +182,8 @@ program
     }
 
     console.log('Waiting for tunnel to connect...');
-    const maxWait = 35000;
-    const interval = 1000;
+    const maxWait = 70000;
+    const interval = 2000;
     let elapsed = 0;
 
     while (elapsed < maxWait) {
@@ -198,7 +198,7 @@ program
       } catch {}
     }
 
-    console.log('Tunnel did not connect within 35 seconds. Try again with: paperfly tunnel');
+    console.log('Tunnel did not connect within 70 seconds. Try again with: paperfly tunnel');
   });
 
 program
