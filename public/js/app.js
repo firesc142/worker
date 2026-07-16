@@ -6,7 +6,6 @@ const socket = io({
   reconnectionAttempts: Infinity
 });
 
-let connected = false;
 let latency = 0;
 let latencyInterval = null;
 
@@ -31,7 +30,7 @@ document.querySelectorAll('.tab[data-tab]').forEach(tab => {
     tab.classList.add('active');
     const target = document.getElementById(tab.dataset.tab + '-tab');
     if (target) target.classList.add('active');
-    window.dispatchEvent(new CustomEvent('tab-change', { detail: tab.dataset.tab }));
+
   });
 });
 
@@ -43,23 +42,16 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
 
 // Connection status
 socket.on('connect', () => {
-  connected = true;
   updateStatus('Connected', 'success');
   startLatencyCheck();
 });
 
 socket.on('disconnect', () => {
-  connected = false;
   updateStatus('Disconnected', 'danger');
   stopLatencyCheck();
 });
 
-socket.on('reconnecting', () => {
-  updateStatus('Reconnecting...', 'warning');
-});
-
 socket.on('reconnect', () => {
-  connected = true;
   updateStatus('Reconnected', 'success');
   showNotification('Reconnected to server', 'success');
 });
@@ -107,26 +99,6 @@ function showNotification(message, type = 'info') {
     toast.classList.add('toast-fade');
     setTimeout(() => toast.remove(), 300);
   }, 4000);
-}
-
-// Mobile detection
-function isMobile() {
-  return window.innerWidth < 768 || 'ontouchstart' in window;
-}
-
-// Utility: format bytes
-function formatBytes(bytes) {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-}
-
-// Utility: format date
-function formatDate(dateStr) {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 // Tunnel URL display

@@ -100,4 +100,4 @@ function handleConnection(socket, io) {
   });
 }
 
-module.exports = { handleConnection, enablePrivacy, disablePrivacy, isPrivacyActive };
+module.exports = { handleConnection };

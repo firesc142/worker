@@ -1,3 +1,5 @@
+const monitors = require('./monitors');
+
 let koffi = null;
 let gdi32 = null;
 let user32 = null;

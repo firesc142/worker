@@ -163,13 +163,6 @@ body {
   white-space: nowrap;
 }
 
-.login-icon {
-  font-size: 40px;
-  color: var(--text-bright);
-  margin-bottom: 14px;
-  display: block;
-  opacity: 0.85;
-}
 
 .login-card h1 {
   font-family: var(--font-title);
@@ -558,7 +551,6 @@ body {
 
 .breadcrumb-item { color: var(--text); cursor: pointer; white-space: nowrap; }
 .breadcrumb-item:hover { color: var(--text-bright); text-decoration: underline; }
-.breadcrumb-separator { color: var(--text-dim); }
 .drives-list { display: flex; gap: 4px; }
 
 .drive-btn {
@@ -604,7 +596,6 @@ body {
   transition: background 0.1s;
 }
 .file-row:hover { background: rgba(255,255,255,0.03); }
-.file-row.selected { background: rgba(255,255,255,0.05); border-left: 2px solid rgba(255,255,255,0.5); }
 
 .file-icon { font-size: 15px; width: 22px; text-align: center; color: var(--text-muted); }
 .file-icon .fa-folder { color: var(--text); }
@@ -754,94 +745,6 @@ body {
 }
 .toggle-label input[type=checkbox] { accent-color: var(--text-bright); }
 
-/* ============================================================
-   SYSTEM TAB
-   ============================================================ */
-
-.system-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; padding: 12px; overflow-y: auto; flex: 1; }
-
-.system-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px;
-  position: relative;
-}
-.system-card::before { content: ''; position: absolute; top: 0; left: 0; width: 1px; height: 100%; background: rgba(255,255,255,0.12); }
-
-.system-card h3 {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.usage-bar { height: 3px; background: var(--border); border-radius: 0; overflow: hidden; margin-bottom: 8px; }
-.usage-fill { height: 100%; background: var(--text-bright); border-radius: 0; transition: width 0.5s; width: 0%; }
-.usage-text { font-size: 24px; font-family: var(--font-mono); color: var(--text-bright); }
-.system-detail { display: block; font-size: 11px; color: var(--text-muted); margin-top: 4px; }
-
-.process-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 8px; font-family: var(--font-mono); }
-.process-table th, .process-table td { padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--border); }
-.process-table th { color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; user-select: none; }
-.process-table th:hover { color: var(--text-bright); }
-.process-table .kill-btn { color: var(--danger); cursor: pointer; }
-.process-table .kill-btn:hover { text-decoration: underline; }
-
-/* ============================================================
-   HOTKEYS TAB
-   ============================================================ */
-
-.hotkeys-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; padding: 12px; overflow-y: auto; flex: 1; }
-
-.hotkey-category {
-  grid-column: 1 / -1;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  padding: 8px 0 4px;
-  border-bottom: 1px solid var(--border);
-  margin-top: 8px;
-}
-.hotkey-category:first-child { margin-top: 0; }
-
-.hotkey-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--text-muted);
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  transition: all 0.15s;
-}
-.hotkey-btn:hover { background: var(--surface-2); border-color: rgba(255,255,255,0.3); color: var(--text-bright); }
-.hotkey-btn i { font-size: 18px; color: var(--text); }
-.hotkey-btn.dangerous:hover { border-color: var(--danger); color: var(--danger); }
-.hotkey-btn.dangerous i { color: var(--danger); }
-
-/* ============================================================
-   ACTIVITY TAB
-   ============================================================ */
-
-.activity-container { flex: 1; overflow-y: auto; padding: 12px; }
-.activity-table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 11px; }
-.activity-table th, .activity-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
-.activity-table th { color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; position: sticky; top: 0; background: var(--bg); }
 
 /* ============================================================
    STATUS BAR
@@ -866,8 +769,6 @@ body {
 
 #latency-display { color: var(--text-bright); }
 
-.status-indicator { width: 6px; height: 6px; border-radius: 50%; background: var(--danger); }
-.status-indicator.connected { background: var(--online); animation: blink 2s infinite; }
 .tunnel-url { color: var(--text-bright); font-size: 10px; }
 .tunnel-url a { color: var(--text-bright); text-decoration: none; }
 .tunnel-url a:hover { text-decoration: underline; }
@@ -1064,6 +965,3 @@ body {
 .hidden { display: none !important; }
 .mobile-keyboard-input { position: absolute; top: -9999px; left: -9999px; opacity: 0; }
 
-/* Orange accent helper — used for section heading left-border only (like CIA ref UI) */
-.orange-accent { color: var(--orange) !important; }
-.border-orange { border-left-color: var(--orange) !important; }

@@ -53,7 +53,7 @@ router.post('/api/auth/login', (req, res) => {
   const config = getConfig();
   const hashed = hashPin(pin);
 
-  const storedHash = config.pin_hash || config.pinHash;
+  const storedHash = config.pin_hash;
   if (hashed === storedHash) {
     clearFailures(ip);
     req.session.authenticated = true;
@@ -104,4 +104,4 @@ function socketAuthMiddleware(socket, next) {
   return next(new Error('Authentication required'));
 }
 
-module.exports = { router, requireAuth, socketAuthMiddleware, hashPin };
+module.exports = { router, requireAuth, socketAuthMiddleware };

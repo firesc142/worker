@@ -336,6 +336,5 @@
     }, 50);
   });
 
-  window.filesInit = init;
   init();
 })();

@@ -18,7 +18,7 @@ const app = express();
 const server = http.createServer(app);
 
 const sessionMiddleware = session({
-  secret: config.session_secret || config.sessionSecret || 'fallback-secret',
+  secret: config.session_secret || 'fallback-secret',
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -62,7 +62,7 @@ io.use((socket, next) => {
 });
 
 // Register socket handlers (wrapped in try/catch for modules not yet built)
-const handlers = ['screen', 'monitors', 'privacy', 'terminal', 'clipboard', 'audio', 'wol'];
+const handlers = ['screen', 'monitors', 'privacy', 'terminal', 'clipboard'];
 const loadedHandlers = {};
 
 handlers.forEach((name) => {
@@ -159,4 +159,3 @@ process.on('unhandledRejection', (err) => {
 
 start();
 
-module.exports = { app, server, io };

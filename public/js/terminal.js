@@ -123,6 +123,4 @@
     }
   });
 
-  // Expose for external use
-  window.terminalInit = initTerminal;
 })();

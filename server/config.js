@@ -11,12 +11,9 @@ const DEFAULT_CONFIG = {
   machineId: null,
   machineName: os.hostname(),
   pin_hash: 'e5ae86cc55fd690333095a4b02a4da5c1900ac0f768fdf308149127648174d50',
-  pinHash: null,
   port: 3000,
   session_secret: crypto.randomUUID(),
-  sessionSecret: null,
   tunnel: {
-    mode: 'localtunnel',
     subdomain: null,
     url: null
   },

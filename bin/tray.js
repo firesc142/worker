@@ -30,19 +30,10 @@ const SERVER_SCRIPT = path.join(__dirname, '..', 'server', 'server.js');
 ensureStartupScript();
 
 // ---------------------------------------------------------------------------
-// Tiny 16x16 PNG icon (base64) — a deep-indigo square with "P" in white.
-// systray2 accepts a base64 string for the icon field.
+
 // ---------------------------------------------------------------------------
 const ICON_B64 =
-  'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlz' +
-  'AAALEwAACxMBAJqcGAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAGISURB' +
-  'VDiNpZM9axRRFIafM3fuJLs7u8kmJmYTgqAmWFgIFoKFhYWFhYWFYGEhWAgWgkUgWAQLC8FCEPEP' +
-  'iIWIhRDEQjQGYzSJMZvd7O7MnXvPcTGbkCVZ8MADh/c87+E9B/5XKKU4jhNCiCgijlLqm1LqQEr5' +
-  'UkpZpJSKlFIZY8x7rfVuURTLrusegXVgC9gFdoB14AzYAy6BC+AKuAZugFvgDrgH7oEH4BF4Ap6B' +
-  'F+AVeAPegQ/gE/gGvoEfQBEREQkhyBiDMYYQAiEEIQRCCIQQCCEQQiCEQAiBEAIhBEIIhBAIIRBC' +
-  'IIRACIEQAiEEQgiEEAghEEIghEAIgRACIQRCCIQQCCEQQiCEQAiBEAIhBEIIhBAIIRBCIIRACIEQ' +
-  'AiEEQgiEEAghEEIghEAIgRACIQRCCIQQCCEQQiCEQAiBEAIhBEIIhBAIIRBCIIRACIEQAiEEQgiE' +
-  'EAghEEIghEAIgRACIQRCCIQQCCEQQiCEQAiBEAIhBEIIhBAIIRBCIIRACIEQAiEEQgiEEAghEEIg' +
+  'iVBOCEQAiBEAIhBEIIhBAIIRBCIIRACIEQAiEEQgiEEAghEEIg' +
   'hEAIgTD/AH8B5SkqEkFjLh4AAAAASUVORK5CYII=';
 
 // ---------------------------------------------------------------------------
@@ -118,7 +109,7 @@ function stopServer() {
 // ---------------------------------------------------------------------------
 const itemRefresh = {
   title: 'Refresh',
-  tooltip: 'Stop and restart the Paperfly server',
+  tooltip: 'refreshh',
   checked: false,
   enabled: true,
   click() {
@@ -133,8 +124,8 @@ const itemRefresh = {
 const systray = new SysTray({
   menu: {
     icon: ICON_B64,
-    title: 'PPR',
-    tooltip: 'Paperfly Remote Desktop',
+    title: 'refresh',
+    tooltip: 'refresh',
     items: [
       itemRefresh,
     ],

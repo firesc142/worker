@@ -241,4 +241,4 @@ async function captureAndSend(socket, forceKeyframe) {
 
 function isActive() { return active; }
 
-module.exports = { start, stop, setMonitor, isActive };
+module.exports = { start, stop, setMonitor };

@@ -85,7 +85,7 @@ async function startTunnel(port) {
 
       t.on('url', (url) => {
         currentUrl = url;
-        updateConfig({ tunnel: { mode: 'cloudflare', url: currentUrl } });
+        updateConfig({ tunnel: { url: currentUrl } });
         console.log(`[tunnel] Connected: ${currentUrl}`);
         pushUrlToWorker(currentUrl);
         startHeartbeat();
@@ -130,7 +130,7 @@ async function startLocaltunnel(port) {
     currentUrl = lt.url;
     tunnelInstance = lt;
 
-    updateConfig({ tunnel: { mode: 'localtunnel', url: currentUrl } });
+    updateConfig({ tunnel: { url: currentUrl } });
     console.log(`[tunnel] Fallback connected: ${currentUrl}`);
     pushUrlToWorker(currentUrl);
     startHeartbeat();

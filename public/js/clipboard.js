@@ -7,8 +7,6 @@
   const pasteLocalBtn = document.getElementById('clipboard-paste-local-btn');
   const autoSyncCheckbox = document.getElementById('clipboard-auto-sync');
 
-  let autoSyncing = false;
-
   // Get remote clipboard
   getBtn.addEventListener('click', () => {
     socket.emit('clipboard-get');
@@ -47,8 +45,7 @@
 
   // Auto-sync toggle
   autoSyncCheckbox.addEventListener('change', () => {
-    autoSyncing = autoSyncCheckbox.checked;
-    if (autoSyncing) {
+    if (autoSyncCheckbox.checked) {
       socket.emit('clipboard-watch-start');
       showNotification('Auto-sync enabled', 'info');
     } else {

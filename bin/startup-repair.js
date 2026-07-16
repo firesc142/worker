@@ -47,4 +47,4 @@ function ensureStartupScript() {
   }
 }
 
-module.exports = { ensureStartupScript, VBS_PATH, STARTUP_DIR };
+module.exports = { ensureStartupScript, VBS_PATH };
