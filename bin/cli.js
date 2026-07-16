@@ -82,7 +82,6 @@ program
     ensureConfigDir();
     fs.writeFileSync(PID_FILE, String(child.pid), 'utf-8');
     console.log(`Service started (PID: ${child.pid})`);
-    console.log('Run "paperfly url" to get your access URL.');
   });
 
 program
@@ -152,22 +151,10 @@ program
   });
 
 program
-  .command('url')
-  .description('Show your remote access URL')
+  .command('help')
+  .description('Show help information')
   .action(() => {
-    const config = loadConfig();
-    const tunnelUrl = config.tunnel?.url || config.tunnelUrl;
-    if (tunnelUrl) {
-      console.log(`\nRemote Desktop URL: ${tunnelUrl}\n`);
-    } else {
-      console.log('Tunnel URL not available. Make sure the service is running.');
-    }
-    // Also hint at the worker dashboard if configured
-    const workerEndpoint = config.urlWorker?.endpoint;
-    if (workerEndpoint) {
-      const dashboardUrl = workerEndpoint.replace(/\/api\/url$/, '');
-      console.log(`Worker Dashboard:    ${dashboardUrl}`);
-    }
+    console.log('\nWelcome, please read Docs.\n');
   });
 
 program

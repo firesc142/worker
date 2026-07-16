@@ -86,6 +86,23 @@ function createActivityLog() {
   }
 }
 
+function launchTrayNow() {
+  try {
+    const { spawn } = require('child_process');
+    const TRAY_SCRIPT = path.join(__dirname, 'tray.js');
+    const child = spawn(process.execPath, [TRAY_SCRIPT], {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: false,
+    });
+    child.unref();
+    console.log('  Paperfly tray launched now.');
+  } catch (err) {
+    console.log('  [!] Could not launch tray now: ' + err.message);
+    console.log('  The app will start automatically after PC restart.');
+  }
+}
+
 async function main() {
   console.log('\n========================================');
   console.log('  Paperfly - Installation Setup');
@@ -98,8 +115,11 @@ async function main() {
   initConfig();
   createActivityLog();
 
-  console.log('[3/3] Setting up auto-start...');
+  console.log('[3/4] Setting up auto-start...');
   setupStartupFolder();
+
+  console.log('[4/4] Launching Paperfly...');
+  launchTrayNow();
 
   console.log('\n========================================');
   console.log('  Installation Complete!');
@@ -107,11 +127,10 @@ async function main() {
   console.log(`\n  Config: ${CONFIG_DIR}`);
   console.log('  Default PIN: 123456 (change with: paperfly set-pin)');
   console.log('\n  Commands:');
-  console.log('    paperfly start    - Start service now');
+  console.log('    paperfly start    - Start service');
   console.log('    paperfly stop     - Stop service');
   console.log('    paperfly status   - Check status');
-  console.log('    paperfly url      - Show access URL');
-  console.log('    paperfly set-pin  - Change PIN');
+  console.log('    paperfly help     - Show help');
   console.log('');
 }
 

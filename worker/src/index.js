@@ -82,7 +82,7 @@ function loginPage(error = '') {
       <div><div class="title">Paperfly</div><div class="subtitle">Remote Desktop Control Panel</div></div>
     </div>
     <form class="form-group" method="POST" action="/login">
-      \${error ? '<div class="error">' + error + '</div>' : ''}
+      ${error ? '<div class="error">' + error + '</div>' : ''}
       <div class="field"><label class="label">Username</label><input class="input" type="text" name="username" required autofocus></div>
       <div class="field"><label class="label">Password</label><input class="input" type="password" name="password" required></div>
       <button type="submit" class="btn">Sign In</button>
@@ -175,9 +175,12 @@ function dashboardPage(machines) {
     <div class="section">
       <div class="section-header">
         <span class="section-title">Connected Machines</span>
-        <span class="section-count">${machines.length} registered</span>
+        <div style="display:flex;align-items:center;gap:0.8rem;">
+          <span class="section-count" id="machineCount">${machines.length} registered</span>
+          <button class="btn-sm" id="refreshBtn" onclick="refreshMachines()" title="Refresh">&#x21bb; REFRESH</button>
+        </div>
       </div>
-      <div class="machine-list">${machineRows}</div>
+      <div class="machine-list" id="machineList">${machineRows}</div>
     </div>
 
     <div class="section">
@@ -195,9 +198,49 @@ function dashboardPage(machines) {
     async function deleteMachine(id) {
       if (!confirm('Remove this machine from the dashboard?')) return;
       const res = await fetch('/api/machines/' + id, { method: 'DELETE' });
-      if (res.ok) location.reload();
+      if (res.ok) refreshMachines();
       else alert('Failed to remove machine');
     }
+
+    function renderMachines(machines) {
+      const list = document.getElementById('machineList');
+      const count = document.getElementById('machineCount');
+      count.textContent = machines.length + ' registered';
+      if (machines.length === 0) {
+        list.innerHTML = '<p class="empty">No machines registered yet. Install Paperfly on a PC to get started.</p>';
+        return;
+      }
+      list.innerHTML = machines.map(function(m) {
+        var online = m.online;
+        var urlHtml = m.url ? '<a href="' + m.url + '" target="_blank">' + m.url + '</a>' : '<span class="no-url">No URL</span>';
+        var meta = (online ? 'ONLINE' : 'OFFLINE') + ' &mdash; ' + (m.updatedAt ? new Date(m.updatedAt).toLocaleString() : 'never');
+        return '<div class="machine">' +
+          '<div class="machine-status"><span class="dot ' + (online ? 'online' : 'offline') + '"></span></div>' +
+          '<div class="machine-info"><div class="machine-name">' + m.name + '</div><div class="machine-id">' + m.id.slice(0,8) + '</div></div>' +
+          '<div class="machine-url">' + urlHtml + '</div>' +
+          '<div class="machine-meta">' + meta + '</div>' +
+          '<button class="btn-sm" onclick="deleteMachine(\'' + m.id + '\')">Remove</button>' +
+        '</div>';
+      }).join('');
+    }
+
+    async function refreshMachines() {
+      var btn = document.getElementById('refreshBtn');
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+      try {
+        var res = await fetch('/api/machines');
+        if (res.ok) {
+          var data = await res.json();
+          renderMachines(data.machines);
+        }
+      } catch(e) {}
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }
+
+    setInterval(refreshMachines, 10000);
+
     document.getElementById('pinForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const pin = document.getElementById('pinInput').value;

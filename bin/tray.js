@@ -111,27 +111,16 @@ function stopServer() {
 }
 
 // ---------------------------------------------------------------------------
-// Tray menu — simplified: Restart + Stop & Exit
+// Tray menu — Refresh only
 // ---------------------------------------------------------------------------
-const itemRestart = {
-  title: 'Restart',
+const itemRefresh = {
+  title: 'Refresh',
   tooltip: 'Stop and restart the Paperfly server',
   checked: false,
   enabled: true,
   click() {
     stopServer();
     setTimeout(() => startServer(), 1200);
-  },
-};
-
-const itemExit = {
-  title: 'Stop & Exit',
-  tooltip: 'Stop Paperfly and remove tray icon',
-  checked: false,
-  enabled: true,
-  click() {
-    stopServer();
-    systray.kill(true);
   },
 };
 
@@ -144,9 +133,7 @@ const systray = new SysTray({
     title: 'PPR',
     tooltip: 'Paperfly Remote Desktop',
     items: [
-      itemRestart,
-      SysTray.separator,
-      itemExit,
+      itemRefresh,
     ],
   },
   debug: false,
