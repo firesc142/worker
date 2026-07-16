@@ -2,11 +2,15 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
+const { v4: uuidv4 } = require('uuid');
+const { v4: uuidv4 } = require('uuid');
 
 const CONFIG_DIR = path.join(os.homedir(), '.paperfly');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 
 const DEFAULT_CONFIG = {
+  machineId: null,
+  machineName: os.hostname(),
   pin_hash: '155e0419caf7a904d2c2c6a31d9fb080515236224351e8fcac96c47f2e39f4e6',
   pinHash: '155e0419caf7a904d2c2c6a31d9fb080515236224351e8fcac96c47f2e39f4e6',
   port: 3000,
@@ -53,6 +57,13 @@ function getConfig() {
           }
         }
       }
+    }
+
+    // Auto-generate machineId on first run
+    if (!merged.machineId) {
+      merged.machineId = uuidv4();
+      merged.machineName = merged.machineName || os.hostname();
+      saveConfig(merged);
     }
 
     return merged;

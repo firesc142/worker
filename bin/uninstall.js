@@ -2,10 +2,10 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { execSync } = require('child_process');
+const { VBS_PATH } = require('./startup-repair');
 
 const CONFIG_DIR = path.join(os.homedir(), '.paperfly');
 const PID_FILE = path.join(CONFIG_DIR, 'server.pid');
-const TASK_NAME = 'PaperflyService';
 
 function killRunningProcess() {
   if (!fs.existsSync(PID_FILE)) return;
@@ -28,11 +28,8 @@ function killRunningProcess() {
 
 function removeStartupScript() {
   try {
-    const startupDir = path.join(os.homedir(), 'AppData', 'Roaming', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
-    const vbsPath = path.join(startupDir, 'paperfly.vbs');
-    
-    if (fs.existsSync(vbsPath)) {
-      fs.unlinkSync(vbsPath);
+    if (fs.existsSync(VBS_PATH)) {
+      fs.unlinkSync(VBS_PATH);
       console.log('  Removed auto-start script from Windows Startup folder.');
     } else {
       console.log('  Auto-start script not found in Startup folder.');

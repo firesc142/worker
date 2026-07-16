@@ -1,14 +1,18 @@
+const os = require('os');
 const { getConfig, updateConfig } = require('./config');
 
 let tunnelInstance = null;
 let currentUrl = null;
+let heartbeatInterval = null;
 
 async function pushUrlToWorker(url) {
   const config = getConfig();
   const workerUrl = config.urlWorker?.endpoint;
   const apiKey = config.urlWorker?.apiKey;
+  const machineId = config.machineId;
+  const machineName = config.machineName || os.hostname();
 
-  if (!workerUrl || !apiKey) return;
+  if (!workerUrl || !apiKey || !machineId) return;
 
   try {
     const response = await fetch(workerUrl, {
@@ -17,7 +21,7 @@ async function pushUrlToWorker(url) {
         'Content-Type': 'application/json',
         'X-API-Key': apiKey
       },
-      body: JSON.stringify({ url })
+      body: JSON.stringify({ url, machineId, machineName })
     });
     if (response.ok) {
       console.log('[tunnel] URL pushed to worker successfully');
@@ -55,6 +59,22 @@ async function syncPinFromWorker() {
   }
 }
 
+function startHeartbeat() {
+  stopHeartbeat();
+  heartbeatInterval = setInterval(() => {
+    if (currentUrl) {
+      pushUrlToWorker(currentUrl);
+    }
+  }, 5 * 60 * 1000);
+}
+
+function stopHeartbeat() {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = null;
+  }
+}
+
 async function startTunnel(port) {
   try {
     const { Tunnel } = require('cloudflared/lib/tunnel');
@@ -68,6 +88,7 @@ async function startTunnel(port) {
         updateConfig({ tunnel: { mode: 'cloudflare', url: currentUrl } });
         console.log(`[tunnel] Connected: ${currentUrl}`);
         pushUrlToWorker(currentUrl);
+        startHeartbeat();
         resolve(currentUrl);
       });
 
@@ -78,9 +99,9 @@ async function startTunnel(port) {
       t.on('exit', (code) => {
         console.log(`[tunnel] Process exited (code ${code})`);
         tunnelInstance = null;
+        stopHeartbeat();
       });
 
-      // Timeout fallback if URL never arrives
       setTimeout(() => {
         if (!currentUrl) {
           console.error('[tunnel] Cloudflare tunnel timed out, trying localtunnel...');
@@ -112,10 +133,12 @@ async function startLocaltunnel(port) {
     updateConfig({ tunnel: { mode: 'localtunnel', url: currentUrl } });
     console.log(`[tunnel] Fallback connected: ${currentUrl}`);
     pushUrlToWorker(currentUrl);
+    startHeartbeat();
 
     lt.on('close', () => {
       console.log('[tunnel] Connection closed');
       tunnelInstance = null;
+      stopHeartbeat();
     });
 
     return currentUrl;
@@ -126,6 +149,7 @@ async function startLocaltunnel(port) {
 }
 
 function stopTunnel() {
+  stopHeartbeat();
   if (tunnelInstance) {
     if (tunnelInstance.stop) {
       tunnelInstance.stop();

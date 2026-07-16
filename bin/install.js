@@ -3,6 +3,9 @@ const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
 const { execSync } = require('child_process');
+const { v4: uuidv4 } = require('uuid');
+const { v4: uuidv4 } = require('uuid');
+const { ensureStartupScript } = require('./startup-repair');
 
 const CONFIG_DIR = path.join(os.homedir(), '.paperfly');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
@@ -40,6 +43,16 @@ function initConfig() {
 
   if (!config.port) {
     config.port = 3000;
+  }
+
+  if (!config.machineId) {
+    config.machineId = uuidv4();
+    console.log(`  Machine ID: ${config.machineId}`);
+  }
+
+  if (!config.machineName) {
+    config.machineName = os.hostname();
+    console.log(`  Machine Name: ${config.machineName}`);
   }
 
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');

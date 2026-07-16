@@ -13,15 +13,18 @@ const { spawn, execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const { ensureStartupScript } = require('./startup-repair');
 
 const CONFIG_DIR = path.join(os.homedir(), '.paperfly');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 const PID_FILE = path.join(CONFIG_DIR, 'server.pid');
 const SERVER_SCRIPT = path.join(__dirname, '..', 'server', 'server.js');
 
+// Self-repair: ensure VBS in Startup folder has correct paths after npm update
+ensureStartupScript();
+
 // ---------------------------------------------------------------------------
 // Tiny 16x16 PNG icon (base64) — a deep-indigo square with "P" in white.
-// Generated via: a minimal 1-colour PNG so no external file is needed.
 // systray2 accepts a base64 string for the icon field.
 // ---------------------------------------------------------------------------
 const ICON_B64 =
@@ -53,11 +56,6 @@ function readConfig() {
 function getTunnelUrl() {
   const cfg = readConfig();
   return cfg.tunnel?.url || cfg.tunnelUrl || null;
-}
-
-function getPort() {
-  const cfg = readConfig();
-  return cfg.port || 3000;
 }
 
 function isServerRunning() {
@@ -93,12 +91,10 @@ function startServer() {
 }
 
 function stopServer() {
-  // Kill tracked child first
   if (serverProc) {
     try { serverProc.kill(); } catch {}
     serverProc = null;
   }
-  // Also kill via PID file (covers restarts / external processes)
   if (fs.existsSync(PID_FILE)) {
     try {
       const pid = parseInt(fs.readFileSync(PID_FILE, 'utf-8').trim(), 10);
@@ -108,72 +104,17 @@ function stopServer() {
   }
 }
 
-function openBrowser(url) {
-  try {
-    execSync(`start "" "${url}"`, { stdio: 'ignore', shell: true });
-  } catch {}
-}
-
-function copyToClipboard(text) {
-  try {
-    execSync(`echo ${text.trim()}| clip`, { stdio: 'ignore', shell: true });
-  } catch {}
-}
-
 // ---------------------------------------------------------------------------
-// Build tray menu items
+// Tray menu — simplified: Restart + Stop & Exit
 // ---------------------------------------------------------------------------
-const itemStatus = {
-  title: '● PPR Running',
-  tooltip: 'Paperfly server status',
-  checked: false,
-  enabled: false,
-};
-
-const itemOpen = {
-  title: 'Open Dashboard',
-  tooltip: `Open Paperfly in your browser`,
-  checked: false,
-  enabled: true,
-  click() {
-    openBrowser(`http://localhost:${getPort()}`);
-  },
-};
-
-const itemCopyUrl = {
-  title: 'Copy Remote URL',
-  tooltip: 'Copy the tunnel URL to clipboard',
-  checked: false,
-  enabled: true,
-  click() {
-    const url = getTunnelUrl();
-    if (url) {
-      copyToClipboard(url);
-    } else {
-      itemCopyUrl.title = 'Remote URL not ready yet…';
-      systray.sendAction({ type: 'update-item', item: itemCopyUrl });
-      setTimeout(() => {
-        itemCopyUrl.title = 'Copy Remote URL';
-        systray.sendAction({ type: 'update-item', item: itemCopyUrl });
-      }, 2500);
-    }
-  },
-};
-
 const itemRestart = {
-  title: 'Restart Server',
+  title: 'Restart',
   tooltip: 'Stop and restart the Paperfly server',
   checked: false,
   enabled: true,
   click() {
-    itemStatus.title = '↻ PPR Restarting…';
-    systray.sendAction({ type: 'update-item', item: itemStatus });
     stopServer();
-    setTimeout(() => {
-      startServer();
-      itemStatus.title = '● PPR Running';
-      systray.sendAction({ type: 'update-item', item: itemStatus });
-    }, 1200);
+    setTimeout(() => startServer(), 1200);
   },
 };
 
@@ -197,12 +138,8 @@ const systray = new SysTray({
     title: 'PPR',
     tooltip: 'Paperfly Remote Desktop',
     items: [
-      itemStatus,
-      SysTray.separator,
-      itemOpen,
-      itemCopyUrl,
-      SysTray.separator,
       itemRestart,
+      SysTray.separator,
       itemExit,
     ],
   },
@@ -217,26 +154,9 @@ systray.onClick(action => {
 });
 
 systray.ready().then(() => {
-  // Start server once tray is visible
   startServer();
-
-  // Poll tunnel URL and update title periodically
-  let pollCount = 0;
-  const pollInterval = setInterval(() => {
-    pollCount++;
-    const url = getTunnelUrl();
-    if (url) {
-      itemCopyUrl.title = 'Copy Remote URL ✓';
-      systray.sendAction({ type: 'update-item', item: itemCopyUrl });
-      clearInterval(pollInterval);
-    } else if (pollCount > 60) {
-      clearInterval(pollInterval); // give up after ~60s
-    }
-  }, 1000);
-
 }).catch(err => {
   console.error('[tray] Failed to start:', err.message);
-  // Fall back to headless server if tray fails
   startServer();
 });
 
