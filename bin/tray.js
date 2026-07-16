@@ -8,7 +8,13 @@
 
 'use strict';
 
-const SysTray = require('systray2').default;
+let SysTray;
+try {
+  SysTray = require('systray2').default;
+} catch (err) {
+  console.error('[tray] systray2 not available:', err.message);
+  process.exit(0);
+}
 const { spawn, execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
