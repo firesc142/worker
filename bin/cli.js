@@ -158,6 +158,50 @@ program
   });
 
 program
+  .command('tunnel')
+  .description('Get the Cloudflare tunnel link')
+  .action(async () => {
+    const config = loadConfig();
+
+    if (config.tunnel && config.tunnel.url) {
+      console.log(config.tunnel.url);
+      return;
+    }
+
+    if (!isRunning()) {
+      console.log('Service is not running. Starting...');
+      const child = spawn(process.execPath, [SERVER_SCRIPT], {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true
+      });
+      child.unref();
+      ensureConfigDir();
+      fs.writeFileSync(PID_FILE, String(child.pid), 'utf-8');
+      console.log(`Service started (PID: ${child.pid})`);
+    }
+
+    console.log('Waiting for tunnel to connect...');
+    const maxWait = 35000;
+    const interval = 1000;
+    let elapsed = 0;
+
+    while (elapsed < maxWait) {
+      await new Promise(r => setTimeout(r, interval));
+      elapsed += interval;
+      try {
+        const freshConfig = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+        if (freshConfig.tunnel && freshConfig.tunnel.url) {
+          console.log(freshConfig.tunnel.url);
+          return;
+        }
+      } catch {}
+    }
+
+    console.log('Tunnel did not connect within 35 seconds. Try again with: paperfly tunnel');
+  });
+
+program
   .command('tray')
   .description('Start Paperfly with a system tray icon')
   .action(() => {

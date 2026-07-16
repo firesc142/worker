@@ -32,9 +32,10 @@ ensureStartupScript();
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
+// 16x16 transparent PNG icon
 const ICON_B64 =
-  'iVBOCEQAiBEAIhBEIIhBAIIRBCIIRACIEQAiEEQgiEEAghEEIg' +
-  'hEAIgTD/AH8B5SkqEkFjLh4AAAAASUVORK5CYII=';
+  'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAADklE' +
+  'QVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
 // ---------------------------------------------------------------------------
 // Server process management

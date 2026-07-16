@@ -4,7 +4,7 @@ const { getConfig, updateConfig } = require('./config');
 let tunnelInstance = null;
 let currentUrl = null;
 
-async function pushUrlToWorker(url) {
+async function pushUrlToWorker(url, retries = 3) {
   const config = getConfig();
   const workerUrl = config.urlWorker?.endpoint;
   const apiKey = config.urlWorker?.apiKey;
@@ -13,22 +13,28 @@ async function pushUrlToWorker(url) {
 
   if (!workerUrl || !apiKey || !machineId) return;
 
-  try {
-    const response = await fetch(workerUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': apiKey
-      },
-      body: JSON.stringify({ url, machineId, machineName, status: 'online', ts: Date.now() })
-    });
-    if (response.ok) {
-      console.log('[tunnel] URL pushed to worker');
-    } else {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(workerUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey
+        },
+        body: JSON.stringify({ url, machineId, machineName, status: 'online', ts: Date.now() })
+      });
+      if (response.ok) {
+        console.log('[tunnel] URL pushed to worker');
+        syncPinFromWorker();
+        return;
+      }
       console.error(`[tunnel] Failed to push URL to worker: ${response.status}`);
+    } catch (err) {
+      console.error(`[tunnel] Error pushing URL to worker (attempt ${attempt}/${retries}): ${err.message}`);
     }
-  } catch (err) {
-    console.error(`[tunnel] Error pushing URL to worker: ${err.message}`);
+    if (attempt < retries) {
+      await new Promise(r => setTimeout(r, 5000 * attempt));
+    }
   }
 
   syncPinFromWorker();
