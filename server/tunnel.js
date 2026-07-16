@@ -104,49 +104,19 @@ async function startTunnel(port) {
 
       setTimeout(() => {
         if (!currentUrl) {
-          console.error('[tunnel] Cloudflare tunnel timed out, trying localtunnel...');
+          console.error('[tunnel] Cloudflare tunnel timed out');
           t.stop();
           tunnelInstance = null;
-          startLocaltunnel(port).then(resolve);
+          resolve(null);
         }
       }, 30000);
     });
   } catch (err) {
     console.error(`[tunnel] Cloudflare tunnel failed: ${err.message}`);
-    return startLocaltunnel(port);
-  }
-}
-
-async function startLocaltunnel(port) {
-  try {
-    const localtunnel = require('localtunnel');
-    const config = getConfig();
-    const tunnelConfig = config.tunnel || {};
-    const subdomain = tunnelConfig.subdomain || undefined;
-    const opts = { port };
-    if (subdomain) opts.subdomain = subdomain;
-
-    const lt = await localtunnel(opts);
-    currentUrl = lt.url;
-    tunnelInstance = lt;
-
-    updateConfig({ tunnel: { url: currentUrl } });
-    console.log(`[tunnel] Fallback connected: ${currentUrl}`);
-    pushUrlToWorker(currentUrl);
-    startHeartbeat();
-
-    lt.on('close', () => {
-      console.log('[tunnel] Connection closed');
-      tunnelInstance = null;
-      stopHeartbeat();
-    });
-
-    return currentUrl;
-  } catch (err) {
-    console.error(`[tunnel] All tunnel methods failed: ${err.message}`);
     return null;
   }
 }
+
 
 async function notifyOffline() {
   const config = getConfig();
