@@ -133,7 +133,7 @@ async function start() {
     if (url) {
       console.log(`[server] Remote access: ${url}`);
     } else {
-      console.log('[server] Tunnel not connected yet. Run `remote-desktop url` to check later.');
+      console.log('[server] Tunnel connecting in background. It will appear when ready.');
     }
   });
 }

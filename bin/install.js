@@ -125,22 +125,58 @@ function launchTrayNow() {
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
+async function ensureCloudflaredBinary() {
+  const binDir = path.join(CONFIG_DIR, 'bin');
+  const binPath = path.join(binDir, 'cloudflared.exe');
+
+  // Check if npm module already has it
+  try {
+    const constantsPath = require.resolve('cloudflared/lib/constants');
+    const npmBin = path.join(path.dirname(constantsPath), '..', 'bin', 'cloudflared.exe');
+    if (fs.existsSync(npmBin)) {
+      console.log('  cloudflared binary already present (npm module)');
+      return;
+    }
+  } catch {}
+
+  if (fs.existsSync(binPath)) {
+    console.log('  cloudflared binary already present');
+    return;
+  }
+
+  console.log('  Downloading cloudflared binary...');
+  try {
+    if (!fs.existsSync(binDir)) {
+      fs.mkdirSync(binDir, { recursive: true });
+    }
+    const { install } = require('cloudflared/lib/install');
+    await install(binPath);
+    console.log('  cloudflared binary downloaded successfully');
+  } catch (err) {
+    console.log(`  [!] cloudflared download failed: ${err.message}`);
+    console.log('  The service will retry at first launch.');
+  }
+}
+
 async function main() {
   console.log('\n========================================');
   console.log('  Paperfly - Installation Setup');
   console.log('========================================\n');
 
-  console.log('[1/4] Creating config directory...');
+  console.log('[1/5] Creating config directory...');
   createConfigDir();
 
-  console.log('[2/4] Initializing configuration...');
+  console.log('[2/5] Initializing configuration...');
   initConfig();
   createActivityLog();
 
-  console.log('[3/4] Registering auto-start...');
+  console.log('[3/5] Downloading cloudflared tunnel binary...');
+  await ensureCloudflaredBinary();
+
+  console.log('[4/5] Registering auto-start...');
   registerAutoStart();
 
-  console.log('[4/4] Launching Paperfly...');
+  console.log('[5/5] Launching Paperfly...');
   launchTrayNow();
 
   console.log('\n========================================');
